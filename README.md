@@ -1,0 +1,184 @@
+# KarobaarBook — Phase 1 (Khata Module)
+
+> **Apna Karobaar, Digital Register.**
+> A mobile-first PWA for small factory owners and manufacturers in Pakistan to
+> replace manual paper registers (khata, karigar wages, expenses).
+
+Phase 1 ships the **Khata** module: customer/vendor parties with live lena/dena
+balances, transaction history, edit/delete, full Supabase auth, and PWA
+installability. Future phases (karigar wages, inventory, expenses, reports)
+will plug into the same database foundation.
+
+---
+
+## Tech stack
+
+- **Next.js 14** (App Router, TypeScript, strict mode)
+- **Supabase** — Postgres + Auth + Realtime + Row Level Security
+- **`@supabase/ssr`** for browser + server + middleware auth (the modern
+  replacement for the now-deprecated `@supabase/auth-helpers-nextjs`)
+- **Tailwind CSS** with a small custom design system
+- **next-pwa** for installable PWA + offline shell
+- **Vercel** for hosting
+
+> Note on the Supabase package choice: the original spec referenced
+> `@supabase/auth-helpers-nextjs`, but that package is deprecated and its types
+> are incompatible with current `@supabase/supabase-js` (`Schema` collapses to
+> `never` on `.insert()` / `.update()`). `@supabase/ssr` is Supabase's
+> officially recommended replacement and is used here. The cookie-driven session
+> flow is unchanged.
+
+## Project layout
+
+```
+app/
+  (auth)/login, register          ← Public auth flows
+  (dashboard)/
+    layout.tsx                    ← Auth-guarded shell + BottomNav
+    dashboard/                    ← Summary cards + recent transactions
+    khata/                        ← Party list, party detail, new party
+  layout.tsx                      ← Root shell + ToastProvider
+  page.tsx                        ← Redirects to /dashboard or /login
+
+components/
+  ui/      Button, Input, Card, BottomSheet, Modal, Toast, Icons, …
+  layout/  Header, BottomNav
+  khata/   PartyCard, TransactionItem, AddPartyForm, AddTransactionForm
+
+hooks/     useAuth, useParties, useTransactions (with realtime subscriptions)
+lib/       supabase clients, format helpers (Pakistani digit grouping)
+types/     database.ts (typed Supabase schema)
+supabase/  schema.sql (run this once to set up DB)
+middleware.ts ← auth-protects /dashboard/** and /khata/**
+```
+
+---
+
+## 1. Setup Supabase
+
+1. Create a project at <https://supabase.com>.
+2. Open the SQL editor and run [`supabase/schema.sql`](./supabase/schema.sql).
+   This creates:
+   - `profiles`, `parties`, `transactions` tables
+   - `party_type` and `transaction_type` enums
+   - The `party_balances` view (with `security_invoker = on` so RLS applies)
+   - Row Level Security policies — every row scoped to `auth.uid()`
+   - A trigger that auto-creates a `profiles` row on signup
+   - Realtime publications for `parties` and `transactions`
+3. In **Authentication → Providers**, keep **Email** enabled. For the smoothest
+   demo, also turn **off** "Confirm email" so new signups can log in immediately.
+
+## 2. Local environment
+
+Copy the example file and fill in your project's keys (Project settings → API):
+
+```bash
+cp .env.local.example .env.local
+```
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://<your-project-ref>.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-anon-public-key>
+```
+
+## 3. Install + run
+
+```bash
+npm install
+npm run dev
+```
+
+App runs at <http://localhost:3000>. Open it from a phone on the same LAN
+(`http://<your-mac-ip>:3000`) to feel the mobile UX — it's designed for 375px.
+
+## 4. Production build
+
+```bash
+npm run build
+npm run start
+```
+
+`next-pwa` is **disabled in development** (per `next.config.js`) and enabled in
+production, so the service worker is generated only by `next build`.
+
+## 5. Deploy to Vercel
+
+1. Push the repo to GitHub.
+2. Import it in Vercel.
+3. In **Project Settings → Environment Variables**, add
+   `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   (Production + Preview).
+4. Deploy. Open the URL on Android Chrome → menu → **Install app**. KarobaarBook
+   will install as a standalone PWA with its own icon.
+
+---
+
+## Data model
+
+| Table          | Purpose                                                          |
+| -------------- | ---------------------------------------------------------------- |
+| `profiles`     | Per-user profile (full name, factory name, phone, city)          |
+| `parties`      | Customers / vendors / both — your khata contacts                 |
+| `transactions` | Lena (receivable) or dena (payable) entries per party            |
+| `party_balances` | View: per-party `total_lena`, `total_dena`, `net_balance` (live) |
+
+Every Supabase query in the app filters by `owner_id = auth.uid()` and RLS
+enforces it server-side too — so **one user can never see another user's data**.
+
+---
+
+## Key features in Phase 1
+
+- Email/password auth via Supabase, with middleware-protected routes
+- Add / edit / delete parties (customer, vendor, or both)
+- Add / edit / delete transactions (lena or dena)
+- Live `party_balances` view + realtime channels → balances update instantly
+- Pakistani digit grouping (`1,23,456` not `123,456`) via `lib/format.ts`
+- Mobile-first design: 480px max app shell, large tap targets, bottom nav,
+  floating action button, bottom-sheet forms
+- Empty / loading / error states for every async surface
+- Installable PWA with manifest + icons (SVG + generated PNGs)
+
+## Definition of Done — Phase 1
+
+- [x] User can register and login
+- [x] User can add a customer or vendor
+- [x] User can view all parties with live balances
+- [x] User can add lena/dena transactions
+- [x] User can edit a transaction
+- [x] User can delete a transaction (with confirmation)
+- [x] Balance updates instantly after transaction (Supabase realtime)
+- [x] App installable on Android phone as PWA
+- [x] All data is private per user (RLS + owner_id filters on every query)
+- [x] Works smoothly on mobile screens (designed for 375px+)
+- [x] Deployable to Vercel with Supabase
+
+## Scripts
+
+| Command           | What it does                                    |
+| ----------------- | ----------------------------------------------- |
+| `npm run dev`     | Next.js dev server (PWA disabled)               |
+| `npm run build`   | Production build (generates PWA service worker) |
+| `npm run start`   | Run the production build                        |
+| `npm run lint`    | Run `next lint`                                 |
+| `npm run type-check` | Strict TypeScript check                      |
+
+## Not in Phase 1 (intentionally)
+
+These are designed for in the DB but not built as UI yet:
+
+- Karigar / employee management + wages
+- Inventory / stock
+- Expenses
+- Reports & graphs
+- WhatsApp share / PDF export
+- Urdu language toggle
+
+The data model and routes (`/karigar`, `/more`) are stubbed in the bottom nav
+so users see them as **"coming soon"** today.
+
+---
+
+## License
+
+Private — for KarobaarBook team use.
