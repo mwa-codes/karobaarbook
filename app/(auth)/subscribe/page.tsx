@@ -25,7 +25,7 @@ export default function SubscribePage() {
   }, [loading, state.isActive, router]);
 
   const whatsappMessage = encodeURIComponent(
-    `Assalam o Alaikum,\n\nMain KarobaarBook subscribe karna chahta hoon.\n\nMera email: ${user?.email ?? ""}\n\nKripya payment details batayein.`
+    `Assalam o Alaikum,\n\nMain KarobaarBook subscribe karna chahta hoon.\n\nMera email: ${user?.email ?? ""}\n\nBrae Meharbani payment details batayein.`
   );
   const whatsappUrl = `https://wa.me/${OWNER_WHATSAPP}?text=${whatsappMessage}`;
 
@@ -47,7 +47,7 @@ export default function SubscribePage() {
                 Account Suspend Hai
               </h2>
               <p className="mt-2 text-center text-sm text-ink-500">
-                Aap ka account suspend kar diya gaya hai. Madad ke liye hamare
+                Aap ka account suspend kar diya gaya hai. Madad ke liye hum
                 se rabta karein.
               </p>
             </>
@@ -55,10 +55,10 @@ export default function SubscribePage() {
             <>
               <div className="mb-4 text-center text-4xl">⏰</div>
               <h2 className="text-center text-lg font-bold text-ink-900">
-                Trial Khatam Ho Gaya
+                Shukria! Trial Khatam Ho Gaya Hai
               </h2>
               <p className="mt-2 text-center text-sm text-ink-500">
-                Aap ka free trial khatam ho gaya hai. App use karte rehne ke
+                Aap ka free trial khatam ho gaya hai. Mazeed istimal ke
                 liye subscribe karein.
               </p>
             </>
@@ -71,7 +71,7 @@ export default function SubscribePage() {
                   <p className="font-bold text-brand-700">Monthly Plan</p>
                   <p className="text-xs text-ink-500">Har mahine</p>
                 </div>
-                <p className="text-xl font-bold text-brand-700">Rs. 500</p>
+                <p className="text-xl font-bold text-brand-700">Rs. 999</p>
               </div>
             </div>
             <div className="rounded-xl border border-line bg-white p-4">
@@ -81,7 +81,7 @@ export default function SubscribePage() {
                   <p className="text-xs text-lena">2 mahine free!</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-xl font-bold text-ink-900">Rs. 5,000</p>
+                  <p className="text-xl font-bold text-ink-900">Rs. 9,999</p>
                   <p className="text-xs text-ink-500">saal ka</p>
                 </div>
               </div>
