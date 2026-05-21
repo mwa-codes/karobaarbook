@@ -12,20 +12,17 @@ import { EditIcon, PhoneIcon, TrashIcon } from "@/components/ui/Icons";
 import { useToast } from "@/components/ui/Toast";
 import { AddTransactionForm } from "@/components/khata/AddTransactionForm";
 import { AddPartyForm } from "@/components/khata/AddPartyForm";
-import { TransactionItem } from "@/components/khata/TransactionItem";
+import { TransactionRow } from "@/components/khata/TransactionRow";
 import { useAuth } from "@/hooks/useAuth";
 import { fetchParty, fetchPartyBalance } from "@/hooks/useParties";
 import { useTransactions } from "@/hooks/useTransactions";
 import { supabase } from "@/lib/supabase";
-import {
-  classNames,
-  formatAmountWithRs,
-  formatPKR,
-} from "@/lib/format";
+import { classNames, formatRs, formatPKR } from "@/lib/format";
 import type {
   Party,
   PartyBalance,
   Transaction,
+  TransactionCategory,
   TransactionType,
 } from "@/types/database";
 
@@ -51,6 +48,7 @@ export default function PartyDetailPage() {
   const [sheet, setSheet] = useState<{
     open: boolean;
     type: TransactionType;
+    category?: TransactionCategory;
     editing?: Transaction | null;
   }>({ open: false, type: "lena", editing: null });
 
@@ -109,13 +107,35 @@ export default function PartyDetailPage() {
   }, [userId, partyId, loadParty]);
 
   const net = useMemo(() => Number(balance?.net_balance ?? 0), [balance]);
-  const isLena = net >= 0;
+  const isLena = net > 0;
+  const isSettled = net === 0;
 
-  function openAdd(type: TransactionType) {
-    setSheet({ open: true, type, editing: null });
+  // Build a chronological-ASC running-balance list for display.
+  // Always recalc from beginning — never store running balance.
+  const ledger = useMemo(() => {
+    const sorted = [...transactions].sort((a, b) => {
+      const d = a.transaction_date.localeCompare(b.transaction_date);
+      if (d !== 0) return d;
+      return a.created_at.localeCompare(b.created_at);
+    });
+    let running = 0;
+    const rows = sorted.map((t) => {
+      running += t.type === "lena" ? Number(t.amount) : -Number(t.amount);
+      return { t, runningBalance: running };
+    });
+    return rows.reverse();
+  }, [transactions]);
+
+  function openAdd(type: TransactionType, category?: TransactionCategory) {
+    setSheet({ open: true, type, category, editing: null });
   }
   function openEdit(t: Transaction) {
-    setSheet({ open: true, type: t.type, editing: t });
+    setSheet({
+      open: true,
+      type: t.type,
+      category: t.transaction_category,
+      editing: t,
+    });
   }
   function closeSheet() {
     setSheet((s) => ({ ...s, open: false }));
@@ -162,7 +182,7 @@ export default function PartyDetailPage() {
   if (partyLoading || authLoading) {
     return (
       <div>
-        <Header title="Party" showBack variant="brand" />
+        <Header title="Party" showBack />
         <div className="px-4 pt-4">
           <Card>
             <Skeleton className="h-5 w-40" />
@@ -177,7 +197,7 @@ export default function PartyDetailPage() {
   if (!party) {
     return (
       <div>
-        <Header title="Party" showBack variant="brand" />
+        <Header title="Party" showBack />
         <div className="px-4 pt-6">
           <Card className="text-center">
             <p className="text-sm font-semibold text-ink-900">
@@ -200,6 +220,9 @@ export default function PartyDetailPage() {
     );
   }
 
+  const isCustomer = party.type === "customer" || party.type === "both";
+  const isVendor = party.type === "vendor" || party.type === "both";
+
   return (
     <div>
       <Header
@@ -212,7 +235,6 @@ export default function PartyDetailPage() {
               : "Vendor"
         }
         showBack
-        variant="brand"
         right={
           <>
             <button
@@ -235,7 +257,7 @@ export default function PartyDetailPage() {
         }
       />
 
-      <div className="-mt-2 px-4">
+      <div className="px-4 pt-4">
         <Card>
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
@@ -245,21 +267,21 @@ export default function PartyDetailPage() {
               <p
                 className={classNames(
                   "mt-1 font-mono text-3xl font-bold",
-                  net === 0
+                  isSettled
                     ? "text-ink-900"
                     : isLena
                       ? "text-lena"
                       : "text-dena"
                 )}
               >
-                {formatAmountWithRs(Math.abs(net))}
+                {formatRs(Math.abs(net))}
               </p>
               <p className="mt-1 text-xs text-ink-500">
-                {net === 0
+                {isSettled
                   ? "Hisaab barabar."
                   : isLena
-                    ? `Aap ko ${party.name} se Rs ${formatPKR(Math.abs(net))} milne hain`
-                    : `Aap ko ${party.name} ko Rs ${formatPKR(Math.abs(net))} dene hain`}
+                    ? `${party.name} se Rs. ${formatPKR(Math.abs(net))} milne hain (LENA)`
+                    : `${party.name} ko Rs. ${formatPKR(Math.abs(net))} dene hain (DENA)`}
               </p>
             </div>
             {party.phone ? (
@@ -273,36 +295,55 @@ export default function PartyDetailPage() {
             ) : null}
           </div>
 
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <Button
-              variant="lena"
-              size="lg"
-              onClick={() => openAdd("lena")}
-              fullWidth
-            >
-              Lena Add Karo
-            </Button>
-            <Button
-              variant="dena"
-              size="lg"
-              onClick={() => openAdd("dena")}
-              fullWidth
-            >
-              Dena Add Karo
-            </Button>
+          {/* Two visually-connected action buttons */}
+          <div className="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-line">
+            {isCustomer ? (
+              <ActionTile
+                tone="lena"
+                emoji="📥"
+                title="+ New Bill"
+                subtitle="Unhon ne kharida"
+                onClick={() => openAdd("lena", "sale")}
+              />
+            ) : (
+              <ActionTile
+                tone="dena"
+                emoji="📥"
+                title="+ Purchase"
+                subtitle="Aap ne kharida"
+                onClick={() => openAdd("dena", "purchase")}
+              />
+            )}
+            {isCustomer ? (
+              <ActionTile
+                tone="dena"
+                emoji="📤"
+                title="+ Payment Received"
+                subtitle="Unhon ne diya"
+                onClick={() => openAdd("dena", "payment_received")}
+              />
+            ) : isVendor ? (
+              <ActionTile
+                tone="lena"
+                emoji="📤"
+                title="+ Payment Made"
+                subtitle="Aap ne diya"
+                onClick={() => openAdd("lena", "payment_made")}
+              />
+            ) : null}
           </div>
 
           <div className="mt-4 grid grid-cols-2 gap-3 border-t border-line pt-3 text-center">
             <div>
               <p className="text-[11px] uppercase text-ink-500">Total Lena</p>
               <p className="font-mono text-sm font-semibold text-lena">
-                Rs {formatPKR(balance?.total_lena ?? 0)}
+                Rs. {formatPKR(balance?.total_lena ?? 0)}
               </p>
             </div>
             <div>
               <p className="text-[11px] uppercase text-ink-500">Total Dena</p>
               <p className="font-mono text-sm font-semibold text-dena">
-                Rs {formatPKR(balance?.total_dena ?? 0)}
+                Rs. {formatPKR(balance?.total_dena ?? 0)}
               </p>
             </div>
           </div>
@@ -325,8 +366,10 @@ export default function PartyDetailPage() {
           </Card>
         ) : null}
 
-        <section className="mt-6 pb-6">
-          <h2 className="px-1 text-base font-bold text-ink-900">Transactions</h2>
+        <section className="mt-6 pb-8">
+          <h2 className="px-1 text-base font-bold text-ink-900">
+            Transaction History
+          </h2>
           <div className="mt-3 flex flex-col gap-2">
             {txLoading ? (
               Array.from({ length: 4 }).map((_, i) => (
@@ -341,17 +384,18 @@ export default function PartyDetailPage() {
                   <Skeleton className="h-5 w-20" />
                 </div>
               ))
-            ) : transactions.length === 0 ? (
+            ) : ledger.length === 0 ? (
               <Card className="text-center">
                 <p className="text-sm text-ink-500">
                   Koi transaction nahi hai. Upar se add karo.
                 </p>
               </Card>
             ) : (
-              transactions.map((t) => (
-                <TransactionItem
+              ledger.map(({ t, runningBalance }) => (
+                <TransactionRow
                   key={t.id}
                   transaction={t}
+                  runningBalance={runningBalance}
                   onEdit={openEdit}
                   onDelete={(tx) => setDeleteTarget(tx)}
                 />
@@ -364,19 +408,15 @@ export default function PartyDetailPage() {
       <BottomSheet
         open={sheet.open}
         onClose={closeSheet}
-        title={
-          sheet.editing
-            ? "Transaction edit karein"
-            : sheet.type === "lena"
-              ? "Lena add karein"
-              : "Dena add karein"
-        }
+        title={sheet.editing ? "Transaction edit karein" : "Nayi entry"}
       >
         {userId ? (
           <AddTransactionForm
             ownerId={userId}
             partyId={partyId}
+            partyType={party.type}
             initialType={sheet.type}
+            initialCategory={sheet.category}
             editing={sheet.editing ?? null}
             onSaved={() => {
               closeSheet();
@@ -429,5 +469,43 @@ export default function PartyDetailPage() {
         onClose={() => setDeletePartyOpen(false)}
       />
     </div>
+  );
+}
+
+function ActionTile({
+  tone,
+  emoji,
+  title,
+  subtitle,
+  onClick,
+}: {
+  tone: "lena" | "dena";
+  emoji: string;
+  title: string;
+  subtitle: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={classNames(
+        "flex flex-col items-center justify-center gap-1 py-4 transition-colors",
+        tone === "lena"
+          ? "bg-lena-50 hover:bg-lena-100"
+          : "bg-dena-50 hover:bg-dena-100"
+      )}
+    >
+      <span className="text-xl leading-none">{emoji}</span>
+      <span
+        className={classNames(
+          "text-sm font-semibold",
+          tone === "lena" ? "text-lena-700" : "text-dena-700"
+        )}
+      >
+        {title}
+      </span>
+      <span className="text-[11px] text-ink-500">{subtitle}</span>
+    </button>
   );
 }

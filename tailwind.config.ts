@@ -36,7 +36,7 @@ const config: Config = {
           500: "#64748b",
         },
         line: "#e2e8f0",
-        page: "#f8fafc",
+        page: "#f1f5f9",
       },
       fontFamily: {
         sans: [
@@ -62,7 +62,7 @@ const config: Config = {
         fab: "0 8px 24px rgba(26, 86, 219, 0.35)",
       },
       maxWidth: {
-        app: "480px",
+        app: "512px",
       },
     },
   },

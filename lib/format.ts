@@ -18,6 +18,14 @@ export function formatAmountWithRs(amount: number | string | null | undefined) {
   return `Rs ${formatPKR(amount)}`;
 }
 
+/** Alias for formatPKR — matches the Phase 1.5 prompt naming. */
+export const formatAmount = formatPKR;
+
+/** Rs. 1,00,000 — note the dot after Rs, used in Roznamcha screens. */
+export function formatRs(amount: number | string | null | undefined): string {
+  return `Rs. ${formatPKR(amount)}`;
+}
+
 export function formatDateLong(input: string | Date): string {
   const d = typeof input === "string" ? new Date(input) : input;
   if (Number.isNaN(d.getTime())) return "";

@@ -18,7 +18,7 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="min-h-[100dvh] bg-page pb-28">
+    <div className="min-h-[100dvh] pb-nav">
       {children}
       <BottomNav />
     </div>

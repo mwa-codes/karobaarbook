@@ -63,7 +63,7 @@ function LoginForm() {
       toast.error(msg);
       return;
     }
-    toast.success("Welcome wapas!");
+    toast.success("Welcome back!");
     const next = searchParams.get("redirect") || "/dashboard";
     router.replace(next);
     router.refresh();

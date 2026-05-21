@@ -40,7 +40,15 @@ export default function KhataListPage() {
       <Header
         title="Khata"
         subtitle={`${parties.length} parties`}
-        variant="brand"
+        right={
+          <Link
+            href="/khata/new"
+            aria-label="Add party"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/25"
+          >
+            <PlusIcon width={20} height={20} />
+          </Link>
+        }
       />
 
       <div className="px-4 pt-3">
@@ -122,17 +130,6 @@ export default function KhataListPage() {
         </div>
       </div>
 
-      <Link
-        href="/khata/new"
-        className={classNames(
-          "fixed bottom-24 right-4 z-30 inline-flex h-14 items-center gap-2 rounded-full",
-          "bg-brand px-5 text-white shadow-fab transition-transform active:scale-95"
-        )}
-        aria-label="Add party"
-      >
-        <PlusIcon width={20} height={20} />
-        <span className="text-sm font-semibold">Party</span>
-      </Link>
     </div>
   );
 }
@@ -162,8 +159,8 @@ function EmptyState({
           : "Sab parties hide ho gayi hain."}
       </p>
       <p className="mt-1 text-xs text-ink-500">
-        Neeche <span className="font-semibold text-brand">+ Party</span> button
-        se nayi party add karein.
+        Header me <span className="font-semibold text-brand">+</span> button se
+        nayi party add karein.
       </p>
       <Link
         href="/khata/new"

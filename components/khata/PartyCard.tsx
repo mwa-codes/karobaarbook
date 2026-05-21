@@ -5,24 +5,35 @@ import type { PartyBalance } from "@/types/database";
 
 export function PartyCard({ party }: { party: PartyBalance }) {
   const net = Number(party.net_balance ?? 0);
-  const isLena = net >= 0;
-  const showZero = net === 0;
+  const isLena = net > 0;
+  const isDena = net < 0;
+  const isSettled = net === 0;
+
+  const borderColor = isSettled
+    ? "border-l-line"
+    : isLena
+      ? "border-l-lena"
+      : "border-l-dena";
+
   return (
     <Link
       href={`/khata/${party.party_id}`}
-      className="block rounded-2xl bg-white p-4 shadow-card transition-colors hover:bg-white/95"
+      className={classNames(
+        "block rounded-2xl bg-white p-3.5 shadow-card border-l-4 transition-colors hover:bg-white/95",
+        borderColor
+      )}
     >
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <Avatar name={party.name} />
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-ink-900">
+            <p className="truncate text-[15px] font-semibold text-ink-900">
               {party.name}
             </p>
-            <p className="mt-0.5 flex items-center gap-1 text-xs text-ink-500">
+            <p className="mt-0.5 flex items-center gap-1 text-[13px] text-ink-500">
               {party.phone ? (
                 <>
-                  <PhoneIcon className="h-3 w-3" />
+                  <PhoneIcon className="h-3.5 w-3.5" />
                   <span className="truncate">{party.phone}</span>
                 </>
               ) : (
@@ -31,21 +42,26 @@ export function PartyCard({ party }: { party: PartyBalance }) {
             </p>
           </div>
         </div>
+
         <div className="flex items-center gap-1">
           <div className="text-right">
             <p
               className={classNames(
-                "font-mono text-sm font-bold",
-                showZero
+                "font-mono text-[16px] font-bold",
+                isSettled
                   ? "text-ink-500"
                   : isLena
                     ? "text-lena"
                     : "text-dena"
               )}
             >
-              {showZero ? "Rs 0" : `Rs ${formatPKR(Math.abs(net))}`}
+              {isSettled ? "Rs. 0" : `Rs. ${formatPKR(Math.abs(net))}`}
             </p>
-            {!showZero ? (
+            {isSettled ? (
+              <span className="mt-1 inline-block rounded-full bg-page px-2 py-0.5 text-[10px] font-semibold text-ink-500">
+                SETTLED
+              </span>
+            ) : (
               <span
                 className={classNames(
                   "mt-1 inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold",
@@ -54,11 +70,7 @@ export function PartyCard({ party }: { party: PartyBalance }) {
                     : "bg-dena-50 text-dena-700"
                 )}
               >
-                {isLena ? "Lena" : "Dena"}
-              </span>
-            ) : (
-              <span className="mt-1 inline-block rounded-full bg-page px-2 py-0.5 text-[10px] font-semibold text-ink-500">
-                Settled
+                {isLena ? "LENA" : "DENA"}
               </span>
             )}
           </div>

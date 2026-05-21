@@ -1,5 +1,14 @@
 export type PartyType = "customer" | "vendor" | "both";
 export type TransactionType = "lena" | "dena";
+export type PaymentMode = "cash" | "bank" | "cheque" | "other";
+export type TransactionCategory =
+  | "sale"
+  | "purchase"
+  | "payment_received"
+  | "payment_made"
+  | "opening_balance"
+  | "other";
+export type RoznamchaType = "income" | "expense";
 
 // IMPORTANT: these are intentionally `type` aliases (not `interface`).
 // Interfaces are considered open/extensible by TypeScript and do NOT satisfy
@@ -33,6 +42,8 @@ export type Transaction = {
   party_id: string;
   amount: number;
   type: TransactionType;
+  transaction_category: TransactionCategory;
+  payment_mode: PaymentMode;
   description: string | null;
   transaction_date: string;
   created_at: string;
@@ -48,6 +59,37 @@ export type PartyBalance = {
   total_lena: number;
   total_dena: number;
   net_balance: number;
+};
+
+export type RoznamchaEntry = {
+  id: string;
+  owner_id: string;
+  entry_date: string;
+  type: RoznamchaType;
+  amount: number;
+  description: string;
+  category: string | null;
+  payment_mode: PaymentMode;
+  created_at: string;
+  updated_at: string;
+};
+
+export type DailyOpeningBalance = {
+  id: string;
+  owner_id: string;
+  entry_date: string;
+  opening_balance: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type DailySummary = {
+  date: string;
+  opening_balance: number;
+  total_income: number;
+  total_expense: number;
+  closing_balance: number;
+  entries: RoznamchaEntry[];
 };
 
 // Supabase-generated style schema map. Lets the typed clients infer
@@ -76,12 +118,46 @@ export type Database = {
       };
       transactions: {
         Row: Transaction;
-        Insert: Omit<Transaction, "id" | "created_at"> & {
+        Insert: Omit<
+          Transaction,
+          "id" | "created_at" | "transaction_category" | "payment_mode"
+        > & {
           id?: string;
           created_at?: string;
+          transaction_category?: TransactionCategory;
+          payment_mode?: PaymentMode;
         };
         Update: Partial<
           Omit<Transaction, "id" | "owner_id" | "party_id" | "created_at">
+        >;
+        Relationships: [];
+      };
+      roznamcha: {
+        Row: RoznamchaEntry;
+        Insert: Omit<
+          RoznamchaEntry,
+          "id" | "created_at" | "updated_at" | "payment_mode" | "category"
+        > & {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+          payment_mode?: PaymentMode;
+          category?: string | null;
+        };
+        Update: Partial<
+          Omit<RoznamchaEntry, "id" | "owner_id" | "created_at" | "updated_at">
+        >;
+        Relationships: [];
+      };
+      daily_opening_balance: {
+        Row: DailyOpeningBalance;
+        Insert: Omit<DailyOpeningBalance, "id" | "created_at" | "updated_at"> & {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<
+          Omit<DailyOpeningBalance, "id" | "owner_id" | "created_at" | "updated_at">
         >;
         Relationships: [];
       };
@@ -96,6 +172,9 @@ export type Database = {
     Enums: {
       party_type: PartyType;
       transaction_type: TransactionType;
+      payment_mode: PaymentMode;
+      transaction_category: TransactionCategory;
+      roznamcha_type: RoznamchaType;
     };
     CompositeTypes: { [_ in never]: never };
   };

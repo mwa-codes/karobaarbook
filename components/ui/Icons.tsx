@@ -114,3 +114,25 @@ export const LogoutIcon = (p: IconProps) => (
     <path d="M21 12H9" />
   </svg>
 );
+
+export const CalendarIcon = (p: IconProps) => (
+  <svg {...base} {...p}>
+    <rect x="3" y="5" width="18" height="16" rx="2" />
+    <path d="M3 9h18" />
+    <path d="M8 3v4M16 3v4" />
+  </svg>
+);
+
+export const ChevronLeftIcon = (p: IconProps) => (
+  <svg {...base} {...p}>
+    <path d="m15 6-6 6 6 6" />
+  </svg>
+);
+
+export const RoznamchaIcon = (p: IconProps) => (
+  <svg {...base} {...p}>
+    <rect x="4" y="4" width="16" height="16" rx="2" />
+    <path d="M4 9h16" />
+    <path d="M9 13h6M9 16h4" />
+  </svg>
+);

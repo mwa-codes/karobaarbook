@@ -2,58 +2,149 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Design tokens — keep in sync with tailwind.config.ts */
 :root {
   color-scheme: light;
+
+  /* Brand */
+  --color-primary: #1a56db;
+  --color-primary-light: #ebf0ff;
+  --color-primary-dark: #1040a8;
+
+  /* Lena (receivable) */
+  --color-lena: #16a34a;
+  --color-lena-bg: #f0fdf4;
+  --color-lena-border: #bbf7d0;
+
+  /* Dena (payable) */
+  --color-dena: #dc2626;
+  --color-dena-bg: #fef2f2;
+  --color-dena-border: #fecaca;
+
+  /* Surfaces */
+  --color-surface: #ffffff;
+  --color-background: #f1f5f9;
+  --color-page: #f1f5f9;
+  --color-border: #e2e8f0;
+
+  /* Text */
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #64748b;
+  --color-text-muted: #94a3b8;
+
+  /* Elevation */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+
+  /* Radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+
+  /* Layout */
+  --nav-height: 68px;
+  --app-max-width: 512px;
 }
 
-html,
-body {
-  background: #f8fafc;
-  color: #0f172a;
-  -webkit-tap-highlight-color: transparent;
-  overscroll-behavior-y: none;
+@layer base {
+  html,
+  body {
+    background-color: var(--color-background);
+    color: var(--color-text-primary);
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior-y: none;
+  }
+
+  body {
+    font-family:
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      Roboto,
+      "Helvetica Neue",
+      Arial,
+      sans-serif;
+    min-height: 100dvh;
+  }
+
+  /* Hide number-input spinners (amount fields) */
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  input[type="number"] {
+    appearance: textfield;
+    -moz-appearance: textfield;
+  }
 }
 
-body {
-  font-family:
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    "Helvetica Neue",
-    Arial,
-    sans-serif;
-  min-height: 100dvh;
+@layer components {
+  /* Centered phone frame on desktop; full width on small screens */
+  .app-shell {
+    margin-inline: auto;
+    max-width: var(--app-max-width);
+    min-height: 100dvh;
+    background-color: var(--color-surface);
+    position: relative;
+  }
+
+  @media (min-width: 640px) {
+    .app-shell {
+      box-shadow: var(--shadow-lg);
+    }
+  }
+
+  .safe-bottom {
+    padding-bottom: max(env(safe-area-inset-bottom), 0px);
+  }
+
+  .safe-top {
+    padding-top: max(env(safe-area-inset-top), 0px);
+  }
+
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      var(--color-border) 0%,
+      var(--color-background) 50%,
+      var(--color-border) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.4s ease-in-out infinite;
+    border-radius: var(--radius-sm);
+  }
+
+  .sheet-enter {
+    animation: sheet-in 220ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .backdrop-enter {
+    animation: backdrop-in 180ms ease-out;
+  }
+
+  .toast-enter {
+    animation: toast-in 220ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .bg-brand-gradient {
+    background: linear-gradient(
+      135deg,
+      var(--color-primary) 0%,
+      var(--color-primary-dark) 100%
+    );
+  }
 }
 
-/* Mobile-first app shell — centered on tablets/desktop, full-width on phones */
-.app-shell {
-  margin-inline: auto;
-  max-width: 480px;
-  min-height: 100dvh;
-  background: #f8fafc;
-  position: relative;
+@layer utilities {
+  .pb-nav {
+    padding-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px));
+  }
 }
 
-/* Safe-area helpers for iPhones / Android nav bars */
-.safe-bottom {
-  padding-bottom: max(env(safe-area-inset-bottom), 0px);
-}
-.safe-top {
-  padding-top: max(env(safe-area-inset-top), 0px);
-}
-
-/* Hide number input spinners on the amount field */
-input[type="number"]::-webkit-outer-spin-button,
-input[type="number"]::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-input[type="number"] {
-  -moz-appearance: textfield;
-}
-
-/* Skeleton shimmer */
 @keyframes shimmer {
   0% {
     background-position: -200% 0;
@@ -62,19 +153,7 @@ input[type="number"] {
     background-position: 200% 0;
   }
 }
-.skeleton {
-  background: linear-gradient(
-    90deg,
-    #e2e8f0 0%,
-    #f1f5f9 50%,
-    #e2e8f0 100%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.4s ease-in-out infinite;
-  border-radius: 0.5rem;
-}
 
-/* Bottom sheet animation */
 @keyframes sheet-in {
   from {
     transform: translateY(100%);
@@ -82,9 +161,6 @@ input[type="number"] {
   to {
     transform: translateY(0);
   }
-}
-.sheet-enter {
-  animation: sheet-in 220ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes backdrop-in {
@@ -95,11 +171,7 @@ input[type="number"] {
     opacity: 1;
   }
 }
-.backdrop-enter {
-  animation: backdrop-in 180ms ease-out;
-}
 
-/* Toast */
 @keyframes toast-in {
   from {
     transform: translateY(20px);
@@ -109,7 +181,4 @@ input[type="number"] {
     transform: translateY(0);
     opacity: 1;
   }
-}
-.toast-enter {
-  animation: toast-in 220ms cubic-bezier(0.16, 1, 0.3, 1);
 }

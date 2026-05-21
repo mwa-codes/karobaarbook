@@ -9,12 +9,15 @@ import { LogoutIcon } from "@/components/ui/Icons";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
 import { usePartyBalances } from "@/hooks/useParties";
+import { useRoznamcha } from "@/hooks/useRoznamcha";
 import { useTransactions } from "@/hooks/useTransactions";
 import {
   classNames,
   formatAmountWithRs,
   formatDateShort,
   formatPKR,
+  formatRs,
+  todayIso,
 } from "@/lib/format";
 import { useRouter } from "next/navigation";
 
@@ -25,6 +28,14 @@ export default function DashboardPage() {
   const { transactions, loading: tLoading } = useTransactions(userId, {
     limit: 5,
   });
+  const today = todayIso();
+  const {
+    closingBalance: cashClosing,
+    totalIncome: cashIncome,
+    totalExpense: cashExpense,
+    loading: cashLoading,
+    error: cashError,
+  } = useRoznamcha(userId, today);
   const toast = useToast();
   const router = useRouter();
 
@@ -41,6 +52,7 @@ export default function DashboardPage() {
 
   const net = totals.lena - totals.dena;
   const loading = authLoading || pLoading;
+  const cashLoadingCombined = authLoading || cashLoading;
 
   async function handleLogout() {
     await signOut();
@@ -59,7 +71,6 @@ export default function DashboardPage() {
       <Header
         title={`Salaam, ${greetingName}`}
         subtitle="Aaj ka khulasa"
-        variant="brand"
         right={
           <button
             type="button"
@@ -72,7 +83,7 @@ export default function DashboardPage() {
         }
       />
 
-      <div className="-mt-2 px-4">
+      <div className="px-4 pt-4">
         <div className="grid grid-cols-2 gap-3">
           <SummaryCard
             label="Total Lena"
@@ -91,34 +102,93 @@ export default function DashboardPage() {
         </div>
 
         <Card className="mt-3">
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0 flex-1">
               <p className="text-xs font-medium uppercase tracking-wide text-ink-500">
-                Net Balance
+                Khata — Net Balance
+              </p>
+              <p className="mt-0.5 text-[11px] text-ink-500">
+                Total Lena − Total Dena
               </p>
               <p
                 className={classNames(
                   "mt-1 font-mono text-2xl font-bold",
-                  net >= 0 ? "text-lena" : "text-dena"
+                  net > 0 ? "text-lena" : net < 0 ? "text-dena" : "text-ink-900"
                 )}
               >
                 {loading ? (
                   <Skeleton className="h-7 w-32" />
                 ) : (
-                  formatAmountWithRs(Math.abs(net))
+                  <>
+                    {net > 0 ? "+" : net < 0 ? "−" : ""}
+                    {formatRs(Math.abs(net))}
+                  </>
                 )}
               </p>
+              {!loading ? (
+                <p className="mt-1 font-mono text-xs text-ink-500">
+                  {formatRs(totals.lena)} − {formatRs(totals.dena)}
+                </p>
+              ) : null}
               <p className="mt-1 text-xs text-ink-500">
-                {net >= 0
-                  ? "Aap ke paas zyada lena hai"
-                  : "Aap ko zyada dena hai"}
+                {net > 0
+                  ? "Party se zyada lena (receivable)"
+                  : net < 0
+                    ? "Party ko zyada dena (payable)"
+                    : "Khata barabar hai"}
               </p>
             </div>
             <Link
               href="/khata"
-              className="text-sm font-semibold text-brand hover:underline"
+              className="shrink-0 text-sm font-semibold text-brand hover:underline"
             >
-              Khata dekhein →
+              Khata →
+            </Link>
+          </div>
+        </Card>
+
+        <Card className="mt-3 border-l-4 border-l-brand">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium uppercase tracking-wide text-ink-500">
+                Roznamcha — Aaj ka cash
+              </p>
+              <p className="mt-0.5 text-[11px] text-ink-500">
+                Opening + Amdani − Kharcha (aaj)
+              </p>
+              <p
+                className={classNames(
+                  "mt-1 font-mono text-2xl font-bold",
+                  cashClosing < 0 ? "text-dena" : "text-brand"
+                )}
+              >
+                {cashLoadingCombined ? (
+                  <Skeleton className="h-7 w-32" />
+                ) : (
+                  formatRs(cashClosing)
+                )}
+              </p>
+              {!cashLoadingCombined && !cashError ? (
+                <p className="mt-1 font-mono text-xs text-ink-500">
+                  +{formatPKR(cashIncome)} amdani · −{formatPKR(cashExpense)}{" "}
+                  kharcha
+                </p>
+              ) : null}
+              {cashError ? (
+                <p className="mt-1 text-xs text-dena">
+                  Cash balance load nahi hui.
+                </p>
+              ) : (
+                <p className="mt-1 text-xs text-ink-500">
+                  Cash drawer / roznamcha me ab kitna hai
+                </p>
+              )}
+            </div>
+            <Link
+              href="/roznamcha"
+              className="shrink-0 text-sm font-semibold text-brand hover:underline"
+            >
+              Roznamcha →
             </Link>
           </div>
         </Card>

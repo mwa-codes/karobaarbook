@@ -1,13 +1,18 @@
-# KarobaarBook — Phase 1 (Khata Module)
+# KarobaarBook — Phase 1.5 (Khata + Roznamcha)
 
 > **Apna Karobaar, Digital Register.**
 > A mobile-first PWA for small factory owners and manufacturers in Pakistan to
 > replace manual paper registers (khata, karigar wages, expenses).
 
-Phase 1 ships the **Khata** module: customer/vendor parties with live lena/dena
-balances, transaction history, edit/delete, full Supabase auth, and PWA
-installability. Future phases (karigar wages, inventory, expenses, reports)
-will plug into the same database foundation.
+Phase 1 shipped the **Khata** module. Phase 1.5 layers on:
+
+- **Payment mode** (cash / bank / cheque / other) and **transaction category**
+  (sale / purchase / payment received / payment made / other) per transaction
+- **Running-balance ledger** on every party page
+- **Roznamcha** — a daily cash book with opening / closing balances, income
+  vs. expense entries, and per-day navigation
+- Design overhaul: gradient brand header, phone-frame desktop layout, redesigned
+  party cards with colored left borders, and unified `Rs. 1,00,000` formatting
 
 ---
 
@@ -42,8 +47,10 @@ app/
 
 components/
   ui/      Button, Input, Card, BottomSheet, Modal, Toast, Icons, …
-  layout/  Header, BottomNav
-  khata/   PartyCard, TransactionItem, AddPartyForm, AddTransactionForm
+  layout/    Header, BottomNav
+  khata/     PartyCard, TransactionRow, AddPartyForm, AddTransactionForm
+  roznamcha/ DailySummary, EntryCard, AddEntryForm, DateNavigator,
+             OpeningBalanceEditor
 
 hooks/     useAuth, useParties, useTransactions (with realtime subscriptions)
 lib/       supabase clients, format helpers (Pakistani digit grouping)
@@ -59,12 +66,18 @@ middleware.ts ← auth-protects /dashboard/** and /khata/**
 1. Create a project at <https://supabase.com>.
 2. Open the SQL editor and run [`supabase/schema.sql`](./supabase/schema.sql).
    This creates:
-   - `profiles`, `parties`, `transactions` tables
-   - `party_type` and `transaction_type` enums
+   - `profiles`, `parties`, `transactions`, `roznamcha`,
+     `daily_opening_balance` tables
+   - `party_type`, `transaction_type`, `payment_mode`,
+     `transaction_category`, `roznamcha_type` enums
    - The `party_balances` view (with `security_invoker = on` so RLS applies)
    - Row Level Security policies — every row scoped to `auth.uid()`
    - A trigger that auto-creates a `profiles` row on signup
-   - Realtime publications for `parties` and `transactions`
+   - Realtime publications for every table
+
+   If you already ran the Phase 1 schema, run the incremental migration at
+   [`supabase/migrations/2025_phase_1_5.sql`](./supabase/migrations/2025_phase_1_5.sql)
+   instead — it adds only the new columns / tables and is safe to re-run.
 3. In **Authentication → Providers**, keep **Email** enabled. For the smoothest
    demo, also turn **off** "Confirm email" so new signups can log in immediately.
 
