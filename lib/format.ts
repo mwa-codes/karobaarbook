@@ -56,3 +56,13 @@ export function todayIso(): string {
 export function classNames(...parts: Array<string | false | null | undefined>) {
   return parts.filter(Boolean).join(" ");
 }
+
+/** Opens WhatsApp with a pre-filled message. Client-only (safe on server). */
+export function openWhatsApp(message: string, phone?: string): void {
+  if (typeof window === "undefined") return;
+  const encoded = encodeURIComponent(message);
+  const url = phone
+    ? `https://wa.me/${phone.replace(/\D/g, "")}?text=${encoded}`
+    : `https://wa.me/?text=${encoded}`;
+  window.open(url, "_blank", "noopener,noreferrer");
+}

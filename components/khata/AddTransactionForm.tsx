@@ -30,12 +30,11 @@ export interface AddTransactionFormProps {
 }
 
 /** Categories that represent money owed (lena from customer / payment made to vendor). */
-const CATEGORY_TYPE_MAP: Record<TransactionCategory, TransactionType> = {
+const CATEGORY_TYPE_MAP: Partial<Record<TransactionCategory, TransactionType>> = {
   sale: "lena",
   payment_received: "dena",
   purchase: "dena",
   payment_made: "lena",
-  opening_balance: "lena",
   other: "lena",
 };
 
@@ -143,15 +142,20 @@ export function AddTransactionForm({
     return () => clearTimeout(t);
   }, []);
 
-  const effectiveType: TransactionType =
-    category === "other" ? manualType : CATEGORY_TYPE_MAP[category];
+  const effectiveType: TransactionType = useMemo(() => {
+    if (category === "other") return manualType;
+    if (category === "opening_balance") {
+      return partyType === "vendor" ? "dena" : "lena";
+    }
+    return CATEGORY_TYPE_MAP[category] ?? "lena";
+  }, [category, manualType, partyType]);
 
   const showPaymentMode = SHOW_PAYMENT_MODE[category];
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    const numeric = Number(amount);
-    if (!amount || !Number.isFinite(numeric) || numeric <= 0) {
+    const numeric = parseFloat(amount.replace(/,/g, "").trim());
+    if (!amount.trim() || !Number.isFinite(numeric) || numeric <= 0) {
       setError("Amount sahi daalein (0 se zyada).");
       return;
     }
@@ -205,7 +209,7 @@ export function AddTransactionForm({
     }
   }
 
-  const numericAmount = Number(amount);
+  const numericAmount = parseFloat(amount.replace(/,/g, "").trim());
   const preview =
     Number.isFinite(numericAmount) && numericAmount > 0
       ? formatPKR(numericAmount)
@@ -235,7 +239,7 @@ export function AddTransactionForm({
               tone={
                 c.id === "other"
                   ? "neutral"
-                  : CATEGORY_TYPE_MAP[c.id] === "lena"
+                  : (CATEGORY_TYPE_MAP[c.id] ?? "lena") === "lena"
                     ? "lena"
                     : "dena"
               }
@@ -279,10 +283,9 @@ export function AddTransactionForm({
           <input
             ref={amountRef}
             id="amount"
-            type="number"
-            inputMode="decimal"
-            min="0"
-            step="0.01"
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
             placeholder="0"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
@@ -325,7 +328,11 @@ export function AddTransactionForm({
         type="date"
         value={date}
         onChange={(e) => setDate(e.target.value)}
-        max={todayIso()}
+        max={(() => {
+          const d = new Date();
+          d.setDate(d.getDate() + 90);
+          return d.toISOString().split("T")[0];
+        })()}
         required
       />
 

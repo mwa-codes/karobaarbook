@@ -84,8 +84,8 @@ export function AddEntryForm({
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    const numeric = Number(amount);
-    if (!amount || !Number.isFinite(numeric) || numeric <= 0) {
+    const numeric = parseFloat(amount.replace(/,/g, "").trim());
+    if (!amount.trim() || !Number.isFinite(numeric) || numeric <= 0) {
       setError("Amount sahi daalein (0 se zyada).");
       return;
     }
@@ -143,7 +143,7 @@ export function AddEntryForm({
     }
   }
 
-  const numericAmount = Number(amount);
+  const numericAmount = parseFloat(amount.replace(/,/g, "").trim());
   const preview =
     Number.isFinite(numericAmount) && numericAmount > 0
       ? formatPKR(numericAmount)
@@ -187,10 +187,9 @@ export function AddEntryForm({
           <input
             ref={amountRef}
             id="amount"
-            type="number"
-            inputMode="decimal"
-            min="0"
-            step="0.01"
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
             placeholder="0"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}

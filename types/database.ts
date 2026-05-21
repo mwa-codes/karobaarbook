@@ -74,6 +74,12 @@ export type RoznamchaEntry = {
   updated_at: string;
 };
 
+/** JSON returned by `get_roznamcha_day` RPC (Phase 2 migration). */
+export type RoznamchaDayResult = {
+  opening_balance: number;
+  is_explicit: boolean;
+};
+
 export type DailyOpeningBalance = {
   id: string;
   owner_id: string;
@@ -168,7 +174,15 @@ export type Database = {
         Relationships: [];
       };
     };
-    Functions: { [_ in never]: never };
+    Functions: {
+      get_roznamcha_day: {
+        Args: {
+          p_owner_id: string;
+          p_date: string;
+        };
+        Returns: RoznamchaDayResult;
+      };
+    };
     Enums: {
       party_type: PartyType;
       transaction_type: TransactionType;

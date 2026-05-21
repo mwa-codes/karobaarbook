@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, type ComponentType } from "react";
 import {
   BookIcon,
   HomeIcon,
@@ -11,12 +11,12 @@ import {
 } from "@/components/ui/Icons";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { useToast } from "@/components/ui/Toast";
-import { classNames } from "@/lib/format";
+import { classNames, openWhatsApp } from "@/lib/format";
 
 interface Tab {
   href: string;
   label: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: ComponentType<{ className?: string }>;
 }
 
 const TABS: Tab[] = [
@@ -41,8 +41,10 @@ export function BottomNav() {
     <>
       <nav
         className={classNames(
-          "fixed bottom-0 left-1/2 z-40 -translate-x-1/2",
-          "w-full max-w-app bg-white border-t border-line",
+          "fixed bottom-0 z-40",
+          "left-1/2 -translate-x-1/2",
+          "w-full max-w-app",
+          "bg-white border-t border-line",
           "shadow-[0_-4px_12px_rgba(0,0,0,0.08)] safe-bottom"
         )}
         aria-label="Primary"
@@ -74,19 +76,30 @@ export function BottomNav() {
       >
         <div className="flex flex-col gap-2">
           <MoreLink
-            label="Profile"
-            sublabel="Coming soon"
+            label="📲 App Share Karein"
+            sublabel="Doston ko KarobaarBook ke baare mein batayein"
             onClick={() => {
+              const msg =
+                "KarobaarBook — factory owners ke liye digital register app.\n\nhttps://karobaarbook.vercel.app";
+              openWhatsApp(msg);
               setMoreOpen(false);
-              toast.show("Profile — coming soon");
             }}
           />
           <MoreLink
-            label="Settings"
+            label="💬 Feedback Dein"
+            sublabel="Koi masla ya suggestion ho to batayein"
+            onClick={() => {
+              const msg = "KarobaarBook feedback:\n\n";
+              openWhatsApp(msg, "923016636557");
+              setMoreOpen(false);
+            }}
+          />
+          <MoreLink
+            label="👤 Profile"
             sublabel="Coming soon"
             onClick={() => {
               setMoreOpen(false);
-              toast.show("Settings — coming soon");
+              toast.show("Coming soon");
             }}
           />
         </div>

@@ -50,6 +50,11 @@ export default function DashboardPage() {
     );
   }, [parties]);
 
+  const partyMap = useMemo(
+    () => Object.fromEntries(parties.map((p) => [p.party_id, p])),
+    [parties]
+  );
+
   const net = totals.lena - totals.dena;
   const loading = authLoading || pLoading;
   const cashLoadingCombined = authLoading || cashLoading;
@@ -229,7 +234,7 @@ export default function DashboardPage() {
               </Card>
             ) : (
               transactions.map((t) => {
-                const party = parties.find((p) => p.party_id === t.party_id);
+                const party = partyMap[t.party_id];
                 return (
                   <Link
                     key={t.id}

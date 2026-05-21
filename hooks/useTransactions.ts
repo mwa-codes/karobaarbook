@@ -4,10 +4,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import type { Transaction } from "@/types/database";
 
+const INITIAL_LIMIT = 50;
+
 export interface UseTransactionsResult {
   loading: boolean;
   error: string | null;
   transactions: Transaction[];
+  hasMore: boolean;
+  loadMore: () => void;
   refresh: () => Promise<void>;
 }
 
@@ -20,10 +24,12 @@ export function useTransactions(
   userId: string | null | undefined,
   options: Options = {}
 ): UseTransactionsResult {
-  const { partyId, limit } = options;
+  const { partyId, limit = INITIAL_LIMIT } = options;
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentLimit, setCurrentLimit] = useState(limit);
   const aliveRef = useRef(true);
 
   const fetchTx = useCallback(async () => {
@@ -38,19 +44,22 @@ export function useTransactions(
       .select("*")
       .eq("owner_id", userId)
       .order("transaction_date", { ascending: false })
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(currentLimit + 1);
     if (partyId) q = q.eq("party_id", partyId);
-    if (limit) q = q.limit(limit);
     const { data, error: err } = await q;
     if (!aliveRef.current) return;
     if (err) {
       setError(err.message);
       setTransactions([]);
+      setHasMore(false);
     } else {
-      setTransactions((data ?? []) as Transaction[]);
+      const items = data ?? [];
+      setHasMore(items.length > currentLimit);
+      setTransactions(items.slice(0, currentLimit) as Transaction[]);
     }
     setLoading(false);
-  }, [userId, partyId, limit]);
+  }, [userId, partyId, currentLimit]);
 
   useEffect(() => {
     aliveRef.current = true;
@@ -86,5 +95,9 @@ export function useTransactions(
     };
   }, [userId, partyId, fetchTx]);
 
-  return { loading, error, transactions, refresh: fetchTx };
+  const loadMore = useCallback(() => {
+    setCurrentLimit((prev) => prev + INITIAL_LIMIT);
+  }, []);
+
+  return { loading, error, transactions, hasMore, loadMore, refresh: fetchTx };
 }
