@@ -55,7 +55,7 @@ export default function SubscribePage() {
             <>
               <div className="mb-4 text-center text-4xl">⏰</div>
               <h2 className="text-center text-lg font-bold text-ink-900">
-                Shukria! Trial Khatam Ho Gaya Hai
+                Shukria! Trial Khatam
               </h2>
               <p className="mt-2 text-center text-sm text-ink-500">
                 Aap ka free trial khatam ho gaya hai. Mazeed istimal ke
