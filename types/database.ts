@@ -9,6 +9,8 @@ export type TransactionCategory =
   | "opening_balance"
   | "other";
 export type RoznamchaType = "income" | "expense";
+export type SubscriptionStatus = "trial" | "active" | "expired" | "suspended";
+export type SubscriptionPlan = "monthly" | "annual";
 
 // IMPORTANT: these are intentionally `type` aliases (not `interface`).
 // Interfaces are considered open/extensible by TypeScript and do NOT satisfy
@@ -78,6 +80,21 @@ export type RoznamchaEntry = {
 export type RoznamchaDayResult = {
   opening_balance: number;
   is_explicit: boolean;
+};
+
+export type Subscription = {
+  id: string;
+  user_id: string;
+  email: string | null;
+  full_name: string | null;
+  status: SubscriptionStatus;
+  trial_ends_at: string;
+  subscription_ends_at: string | null;
+  plan: SubscriptionPlan | null;
+  amount_pkr: number | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 export type DailyOpeningBalance = {
@@ -167,6 +184,21 @@ export type Database = {
         >;
         Relationships: [];
       };
+      subscriptions: {
+        Row: Subscription;
+        Insert: Omit<
+          Subscription,
+          "id" | "created_at" | "updated_at" | "status" | "trial_ends_at"
+        > & {
+          id?: string;
+          status?: SubscriptionStatus;
+          trial_ends_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Omit<Subscription, "id" | "user_id">>;
+        Relationships: [];
+      };
     };
     Views: {
       party_balances: {
@@ -182,6 +214,10 @@ export type Database = {
         };
         Returns: RoznamchaDayResult;
       };
+      is_subscription_active: {
+        Args: { p_user_id: string };
+        Returns: boolean;
+      };
     };
     Enums: {
       party_type: PartyType;
@@ -189,6 +225,7 @@ export type Database = {
       payment_mode: PaymentMode;
       transaction_category: TransactionCategory;
       roznamcha_type: RoznamchaType;
+      subscription_status: SubscriptionStatus;
     };
     CompositeTypes: { [_ in never]: never };
   };

@@ -12,6 +12,7 @@ import {
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { useToast } from "@/components/ui/Toast";
 import { classNames, openWhatsApp } from "@/lib/format";
+import { OWNER_WHATSAPP } from "@/lib/support";
 
 interface Tab {
   href: string;
@@ -90,7 +91,7 @@ export function BottomNav() {
             sublabel="Koi masla ya suggestion ho to batayein"
             onClick={() => {
               const msg = "KarobaarBook feedback:\n\n";
-              openWhatsApp(msg, "923016636557");
+              openWhatsApp(msg, OWNER_WHATSAPP);
               setMoreOpen(false);
             }}
           />

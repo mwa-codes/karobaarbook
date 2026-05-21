@@ -47,6 +47,16 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  if (!user && path === "/subscribe") {
+    const url = req.nextUrl.clone();
+    url.pathname = "/login";
+    return NextResponse.redirect(url);
+  }
+
+  if (user && path === "/subscribe") {
+    return res;
+  }
+
   if (user && AUTH_PAGES.has(path)) {
     const url = req.nextUrl.clone();
     url.pathname = "/dashboard";
@@ -58,5 +68,11 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/khata/:path*", "/login", "/register"],
+  matcher: [
+    "/dashboard/:path*",
+    "/khata/:path*",
+    "/login",
+    "/register",
+    "/subscribe",
+  ],
 };
