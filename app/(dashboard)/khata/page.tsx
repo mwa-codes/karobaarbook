@@ -11,7 +11,11 @@ import { PartyCard } from "@/components/khata/PartyCard";
 import { useAuth } from "@/hooks/useAuth";
 import { usePartyBalances, type PartyFilter } from "@/hooks/useParties";
 import { useToast } from "@/components/ui/Toast";
-import { classNames } from "@/lib/format";
+import {
+  classNames,
+  formatAmountWithRs,
+  formatRs,
+} from "@/lib/format";
 import {
   openWhatsApp,
   buildKhataSummaryMessage,
@@ -26,6 +30,19 @@ export default function KhataListPage() {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<PartyFilter>("all");
   const [bulkShareOpen, setBulkShareOpen] = useState(false);
+
+  const totals = useMemo(() => {
+    return parties.reduce(
+      (acc, p) => {
+        acc.lena += Number(p.total_lena ?? 0);
+        acc.dena += Number(p.total_dena ?? 0);
+        return acc;
+      },
+      { lena: 0, dena: 0 }
+    );
+  }, [parties]);
+
+  const net = totals.lena - totals.dena;
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -73,7 +90,58 @@ export default function KhataListPage() {
       />
 
       <div className="px-4 pt-3">
-        <div className="flex items-center rounded-2xl border border-line bg-white px-3.5">
+        <div className="grid grid-cols-2 gap-3">
+          <KhataSummaryCard
+            label="Total Lena"
+            sublabel="Customers se aana hai"
+            amount={totals.lena}
+            tone="lena"
+            loading={showLoading}
+          />
+          <KhataSummaryCard
+            label="Total Dena"
+            sublabel="Vendors ko dena hai"
+            amount={totals.dena}
+            tone="dena"
+            loading={showLoading}
+          />
+        </div>
+
+        <Card className="mt-3">
+          <p className="text-xs font-medium uppercase tracking-wide text-ink-500">
+            Net Balance
+          </p>
+          <p className="mt-0.5 text-[11px] text-ink-500">Total Lena − Total Dena</p>
+          <p
+            className={classNames(
+              "mt-1 font-mono text-2xl font-bold",
+              net > 0 ? "text-lena" : net < 0 ? "text-dena" : "text-ink-900"
+            )}
+          >
+            {showLoading ? (
+              <Skeleton className="h-7 w-32" />
+            ) : (
+              <>
+                {net > 0 ? "+" : net < 0 ? "−" : ""}
+                {formatRs(Math.abs(net))}
+              </>
+            )}
+          </p>
+          {!showLoading ? (
+            <p className="mt-1 font-mono text-xs text-ink-500">
+              {formatRs(totals.lena)} − {formatRs(totals.dena)}
+            </p>
+          ) : null}
+          <p className="mt-1 text-xs text-ink-500">
+            {net > 0
+              ? "Party se zyada lena (receivable)"
+              : net < 0
+                ? "Party ko zyada dena (payable)"
+                : "Khata barabar hai"}
+          </p>
+        </Card>
+
+        <div className="mt-3 flex items-center rounded-2xl border border-line bg-white px-3.5">
           <SearchIcon className="h-5 w-5 text-ink-500" />
           <input
             value={query}
@@ -216,6 +284,41 @@ export default function KhataListPage() {
           </button>
         </div>
       </BottomSheet>
+    </div>
+  );
+}
+
+function KhataSummaryCard({
+  label,
+  sublabel,
+  amount,
+  tone,
+  loading,
+}: {
+  label: string;
+  sublabel: string;
+  amount: number;
+  tone: "lena" | "dena";
+  loading?: boolean;
+}) {
+  return (
+    <div
+      className={classNames(
+        "rounded-2xl p-4 shadow-card",
+        tone === "lena" ? "bg-lena text-white" : "bg-dena text-white"
+      )}
+    >
+      <p className="text-xs font-medium uppercase tracking-wide text-white/80">
+        {label}
+      </p>
+      <p className="mt-1 font-mono text-2xl font-bold">
+        {loading ? (
+          <span className="inline-block h-6 w-24 rounded bg-white/30" />
+        ) : (
+          formatAmountWithRs(amount)
+        )}
+      </p>
+      <p className="mt-1 text-[11px] text-white/80">{sublabel}</p>
     </div>
   );
 }

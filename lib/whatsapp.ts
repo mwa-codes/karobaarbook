@@ -164,3 +164,50 @@ export function buildPendingRemindersMessage(
   msg += `_KarobaarBook se bheja gaya_`;
   return msg;
 }
+
+/** Karigar wage slip after payment */
+export function buildWageSlipMessage(
+  employeeName: string,
+  period: { from: string; to: string },
+  breakdown: { label: string; amount: number }[],
+  gross: number,
+  deductions: number,
+  net: number,
+  factoryName?: string,
+  extras?: { kharcha?: number; advance?: number }
+): string {
+  const header = factoryName ? `*${factoryName}*\n` : "";
+  const from = new Date(`${period.from}T12:00:00`).toLocaleDateString("en-PK", {
+    day: "numeric",
+    month: "short",
+  });
+  const to = new Date(`${period.to}T12:00:00`).toLocaleDateString("en-PK", {
+    day: "numeric",
+    month: "short",
+  });
+
+  let msg =
+    `${header}` +
+    `*💰 Wage Slip — ${employeeName}*\n` +
+    `📅 ${from} – ${to}\n\n` +
+    `*Breakdown:*\n`;
+
+  breakdown.forEach((b) => {
+    msg += `• ${b.label}: Rs. ${formatPKR(b.amount)}\n`;
+  });
+
+  msg += `\n`;
+  msg += `Gross (kaam): Rs. ${formatPKR(gross)}\n`;
+  if (extras?.kharcha && extras.kharcha > 0) {
+    msg += `Kharcha cut:  Rs. ${formatPKR(extras.kharcha)}\n`;
+  }
+  if (extras?.advance && extras.advance > 0) {
+    msg += `Advance cut:  Rs. ${formatPKR(extras.advance)}\n`;
+  }
+  if (deductions > 0) {
+    msg += `Aur katoti:   Rs. ${formatPKR(deductions)}\n`;
+  }
+  msg += `*Net Paid:  Rs. ${formatPKR(net)}*\n\n`;
+  msg += `_KarobaarBook se bheja gaya_`;
+  return msg;
+}

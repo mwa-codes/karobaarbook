@@ -115,6 +115,105 @@ export type DailySummary = {
   entries: RoznamchaEntry[];
 };
 
+// ── Karigar ──────────────────────────────────────────────────
+export type WorkType = "per_day" | "per_piece" | "per_kg";
+
+export type Employee = {
+  id: string;
+  owner_id: string;
+  name: string;
+  phone: string | null;
+  role: string | null;
+  rate_type: WorkType;
+  rate_amount: number;
+  joining_date: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type KarigarWorkEntry = {
+  id: string;
+  owner_id: string;
+  employee_id: string;
+  entry_date: string;
+  work_type: WorkType;
+  quantity: number;
+  rate: number;
+  amount: number;
+  description: string | null;
+  wage_payment_id: string | null;
+  created_at: string;
+};
+
+export type WagePayment = {
+  id: string;
+  owner_id: string;
+  employee_id: string;
+  period_start: string;
+  period_end: string;
+  total_days: number;
+  total_units: number;
+  total_hours: number;
+  gross_amount: number;
+  kharcha_deduction: number;
+  advance_deduction: number;
+  deductions: number;
+  net_amount: number;
+  paid: boolean;
+  paid_at: string | null;
+  notes: string | null;
+  created_at: string;
+};
+
+export type KarigarKharcha = {
+  id: string;
+  owner_id: string;
+  employee_id: string;
+  entry_date: string;
+  amount: number;
+  description: string | null;
+  wage_payment_id: string | null;
+  created_at: string;
+};
+
+export type KarigarAdvance = {
+  id: string;
+  owner_id: string;
+  employee_id: string;
+  entry_date: string;
+  amount: number;
+  amount_settled: number;
+  description: string | null;
+  created_at: string;
+};
+
+export type KarigarAdvanceApplication = {
+  id: string;
+  owner_id: string;
+  advance_id: string;
+  wage_payment_id: string;
+  amount: number;
+  created_at: string;
+};
+
+export type KarigarPendingWage = {
+  employee_id: string;
+  owner_id: string;
+  name: string;
+  phone: string | null;
+  role: string | null;
+  rate_type: WorkType;
+  rate_amount: number;
+  is_active: boolean;
+  total_pending: number;
+  entry_count: number;
+  earliest_unpaid_date: string | null;
+  latest_unpaid_date: string | null;
+  total_kharcha: number;
+  advance_balance: number;
+};
+
 // Supabase-generated style schema map. Lets the typed clients infer
 // row/insert/update shapes without running `supabase gen types`.
 // Shape must match what @supabase/supabase-js expects
@@ -199,10 +298,81 @@ export type Database = {
         Update: Partial<Omit<Subscription, "id" | "user_id">>;
         Relationships: [];
       };
+      employees: {
+        Row: Employee;
+        Insert: Omit<Employee, "id" | "created_at" | "updated_at" | "is_active" | "joining_date"> & {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+          is_active?: boolean;
+          joining_date?: string;
+        };
+        Update: Partial<Omit<Employee, "id" | "owner_id" | "created_at">>;
+        Relationships: [];
+      };
+      karigar_work_entries: {
+        Row: KarigarWorkEntry;
+        Insert: Omit<KarigarWorkEntry, "id" | "amount" | "created_at" | "wage_payment_id"> & {
+          id?: string;
+          created_at?: string;
+          wage_payment_id?: string | null;
+        };
+        Update: Partial<Omit<KarigarWorkEntry, "id" | "owner_id" | "amount" | "created_at">>;
+        Relationships: [];
+      };
+      wage_payments: {
+        Row: WagePayment;
+        Insert: Omit<
+          WagePayment,
+          "id" | "created_at" | "paid" | "paid_at" | "kharcha_deduction" | "advance_deduction"
+        > & {
+          id?: string;
+          created_at?: string;
+          paid?: boolean;
+          paid_at?: string | null;
+          kharcha_deduction?: number;
+          advance_deduction?: number;
+        };
+        Update: Partial<Omit<WagePayment, "id" | "owner_id" | "created_at">>;
+        Relationships: [];
+      };
+      karigar_kharcha: {
+        Row: KarigarKharcha;
+        Insert: Omit<KarigarKharcha, "id" | "created_at" | "wage_payment_id"> & {
+          id?: string;
+          created_at?: string;
+          wage_payment_id?: string | null;
+        };
+        Update: Partial<Omit<KarigarKharcha, "id" | "owner_id" | "created_at">>;
+        Relationships: [];
+      };
+      karigar_advances: {
+        Row: KarigarAdvance;
+        Insert: Omit<KarigarAdvance, "id" | "created_at" | "amount_settled"> & {
+          id?: string;
+          created_at?: string;
+          amount_settled?: number;
+        };
+        Update: Partial<Omit<KarigarAdvance, "id" | "owner_id" | "created_at">>;
+        Relationships: [];
+      };
+      karigar_advance_applications: {
+        Row: KarigarAdvanceApplication;
+        Insert: Omit<KarigarAdvanceApplication, "id" | "created_at"> & {
+          id?: string;
+          created_at?: string;
+        };
+        Update: Partial<Omit<KarigarAdvanceApplication, "id" | "owner_id" | "created_at">>;
+        Relationships: [];
+      };
     };
     Views: {
       party_balances: {
         Row: PartyBalance;
+        Relationships: [];
+      };
+      karigar_pending_wages: {
+        Row: KarigarPendingWage;
         Relationships: [];
       };
     };

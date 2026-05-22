@@ -8,6 +8,7 @@ import {
   HomeIcon,
   MenuIcon,
   RoznamchaIcon,
+  UsersIcon,
 } from "@/components/ui/Icons";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { useToast } from "@/components/ui/Toast";
@@ -23,6 +24,7 @@ interface Tab {
 const TABS: Tab[] = [
   { href: "/dashboard", label: "Dashboard", icon: HomeIcon },
   { href: "/khata", label: "Khata", icon: BookIcon },
+  { href: "/karigar", label: "Karigar", icon: UsersIcon },
   { href: "/roznamcha", label: "Roznamcha", icon: RoznamchaIcon },
   { href: "/more", label: "More", icon: MenuIcon },
 ];
@@ -50,7 +52,7 @@ export function BottomNav() {
         )}
         aria-label="Primary"
       >
-        <div className="grid grid-cols-4 h-[68px]">
+        <div className="grid grid-cols-5 h-[68px]">
           {TABS.map((tab) =>
             tab.href === "/more" ? (
               <TabButton
