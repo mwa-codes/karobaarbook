@@ -23,7 +23,7 @@ export function DailySummary({
       <div className="flex items-center justify-between rounded-2xl border border-line bg-white p-3.5 shadow-card">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-500">
-            Kal ka Baki (Opening)
+            Kal ka Bakaya Balance (Opening)
           </p>
           <p className="mt-0.5 font-mono text-lg font-bold text-ink-900">
             Rs. {formatPKR(openingBalance)}
@@ -72,27 +72,27 @@ function SummaryTile({
   const styles =
     tone === "income"
       ? {
-          bg: "bg-[#eff6ff]",
-          labelColor: "text-[#3b82f6]",
-          valueColor: "text-lena",
-        }
+        bg: "bg-[#eff6ff]",
+        labelColor: "text-[#3b82f6]",
+        valueColor: "text-lena",
+      }
       : tone === "expense"
         ? {
-            bg: "bg-dena-50",
-            labelColor: "text-dena",
-            valueColor: "text-dena",
-          }
+          bg: "bg-dena-50",
+          labelColor: "text-dena",
+          valueColor: "text-dena",
+        }
         : tone === "negative"
           ? {
-              bg: "bg-page border border-line",
-              labelColor: "text-ink-500",
-              valueColor: "text-dena",
-            }
+            bg: "bg-page border border-line",
+            labelColor: "text-ink-500",
+            valueColor: "text-dena",
+          }
           : {
-              bg: "bg-page border border-line",
-              labelColor: "text-ink-500",
-              valueColor: "text-ink-900",
-            };
+            bg: "bg-page border border-line",
+            labelColor: "text-ink-500",
+            valueColor: "text-ink-900",
+          };
   return (
     <div className={classNames("rounded-xl p-2.5 text-center", styles.bg)}>
       <p

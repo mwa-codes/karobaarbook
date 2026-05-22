@@ -23,7 +23,7 @@ export interface AddEntryFormProps {
 }
 
 const INCOME_CATEGORIES = [
-  "Maal Faroshi",
+  "Maal sale kia",
   "Party Payment",
   "Other",
 ] as const;
@@ -151,7 +151,7 @@ export function AddEntryForm({
 
   const placeholder =
     type === "income"
-      ? "e.g. Maal becha, Party ka payment mila"
+      ? "e.g. Maal becha, Party ki payment mili"
       : "e.g. Karigar wages, Tools khareedey, Bags";
 
   return (

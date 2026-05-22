@@ -28,7 +28,6 @@ export function buildPartyBalanceMessage(
       `${header}` +
       `Assalam o Alaikum ${party.name} Sahab,\n\n` +
       `Aap ki taraf se *Rs. ${formatPKR(absBalance)}* baaki hain.\n\n` +
-      `Meherbani farma kar jald payment ka intezam karein.\n\n` +
       `Shukriya 🙏\n` +
       `_KarobaarBook se bheja gaya_`
     );
