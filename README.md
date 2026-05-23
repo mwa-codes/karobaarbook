@@ -78,8 +78,39 @@ middleware.ts ← auth-protects /dashboard/** and /khata/**
    If you already ran the Phase 1 schema, run the incremental migration at
    [`supabase/migrations/2025_phase_1_5.sql`](./supabase/migrations/2025_phase_1_5.sql)
    instead — it adds only the new columns / tables and is safe to re-run.
-3. In **Authentication → Providers**, keep **Email** enabled. For the smoothest
-   demo, also turn **off** "Confirm email" so new signups can log in immediately.
+3. In **Authentication → Providers**, keep **Email** enabled.
+
+   **Email confirmation (recommended for production):** leave **Confirm email**
+   on. After signup, users land on `/auth/confirmed` with a clear success message.
+
+   **URL configuration** (Authentication → URL Configuration):
+
+   - **Site URL:** your production URL (e.g. `https://your-app.vercel.app`)
+   - **Redirect URLs:** add both:
+     - `http://localhost:3000/auth/callback`
+     - `https://your-app.vercel.app/auth/callback`
+
+   Set `NEXT_PUBLIC_SITE_URL` in `.env.local` / Vercel to the same origin you use
+   in Supabase (local: `http://localhost:3000`).
+
+   **Custom verification email** (Authentication → Email Templates → **Confirm signup**):
+
+   - **Subject:** `KarobaarBook — Apna email verify karein`
+   - **Body (example):**
+
+   ```html
+   <h2>KarobaarBook</h2>
+   <p>Shukriya — aapne account banaya hai.</p>
+   <p>Neeche button dabayein apna email confirm karne ke liye:</p>
+   <p><a href="{{ .ConfirmationURL }}">Email verify karein</a></p>
+   <p style="color:#666;font-size:14px;">
+     Yeh email KarobaarBook (Apna Karobaar, Digital Register) ki taraf se bheji gayi hai.
+     Agar aapne account nahi banaya, is email ko ignore karein.
+   </p>
+   ```
+
+   For the smoothest local demo only, you can turn **off** "Confirm email" so new
+   signups can log in immediately without checking inbox.
 
 ## 2. Local environment
 
