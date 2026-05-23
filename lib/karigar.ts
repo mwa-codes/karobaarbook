@@ -163,3 +163,28 @@ export function parsePaymentMode(notes: string | null): string {
   const m = notes.match(/^\[([^\]]+)\]/);
   return m ? m[1] : "—";
 }
+
+export function toIsoDate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+/** Monday–Sunday of the current calendar week (local time). */
+export function getCurrentWeekRange(): { from: string; to: string } {
+  const now = new Date();
+  const day = now.getDay();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + (day === 0 ? -6 : 1 - day));
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  return { from: toIsoDate(monday), to: toIsoDate(sunday) };
+}
+
+export function advanceRemaining(advance: {
+  amount: number;
+  amount_settled: number;
+}): number {
+  return Math.max(0, Number(advance.amount) - Number(advance.amount_settled));
+}

@@ -17,6 +17,10 @@ import { AddKharchaForm } from "@/components/karigar/AddKharchaForm";
 import { AddAdvanceForm } from "@/components/karigar/AddAdvanceForm";
 import { CalculateWagesSheet } from "@/components/karigar/CalculateWagesSheet";
 import { EditKarigarForm } from "@/components/karigar/EditKarigarForm";
+import {
+  KarigarShareSheet,
+  WhatsAppShareIcon,
+} from "@/components/karigar/KarigarShareSheet";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkEntries } from "@/hooks/useWorkEntries";
 import { useKarigarKharcha } from "@/hooks/useKarigarKharcha";
@@ -95,6 +99,7 @@ export default function KarigarDetailPage() {
   const [kharchaFormOpen, setKharchaFormOpen] = useState(false);
   const [advanceFormOpen, setAdvanceFormOpen] = useState(false);
   const [paySheetOpen, setPaySheetOpen] = useState(false);
+  const [shareSheetOpen, setShareSheetOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<KarigarWorkEntry | null>(null);
   const [deleteKharcha, setDeleteKharcha] = useState<KarigarKharcha | null>(null);
@@ -263,14 +268,24 @@ export default function KarigarDetailPage() {
         onBack={() => router.back()}
         right={
           employee ? (
-            <button
-              type="button"
-              onClick={() => setEditOpen(true)}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/25"
-              aria-label="Edit karigar"
-            >
-              <EditIcon />
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => setShareSheetOpen(true)}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/25"
+                aria-label="WhatsApp pe share karein"
+              >
+                <WhatsAppShareIcon />
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditOpen(true)}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/25"
+                aria-label="Edit karigar"
+              >
+                <EditIcon />
+              </button>
+            </>
           ) : null
         }
       />
@@ -514,6 +529,24 @@ export default function KarigarDetailPage() {
             openAdvances={openAdvances}
             onPaid={refreshAllData}
             factoryName={factoryName}
+          />
+          <KarigarShareSheet
+            open={shareSheetOpen}
+            onClose={() => setShareSheetOpen(false)}
+            employee={employee}
+            factoryName={factoryName}
+            unpaidEntries={unpaidEntries}
+            unpaidKharcha={unpaidKharcha}
+            openAdvances={openAdvances}
+            allEntries={allEntries}
+            allKharcha={allKharcha}
+            payments={payments}
+            pendingSummary={{
+              kaamPending: pendingTotal,
+              kharchaPending: kharchaTotal,
+              advanceBalance: advanceBalanceTotal,
+              estimatedNet,
+            }}
           />
           <BottomSheet
             open={editOpen}
