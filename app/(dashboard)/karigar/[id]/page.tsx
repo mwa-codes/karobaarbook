@@ -56,16 +56,15 @@ export default function KarigarDetailPage() {
   const [kaamSub, setKaamSub] = useState<KaamSub>("unpaid");
 
   const {
-    entries: unpaidEntries,
-    loading: unpaidLoading,
-    refresh: refreshUnpaid,
-  } = useWorkEntries(userId, { employeeId, unpaidOnly: true });
-
-  const {
     entries: allEntries,
-    loading: allLoading,
-    refresh: refreshAll,
+    loading: workEntriesLoading,
+    refresh: refreshEntries,
   } = useWorkEntries(userId, { employeeId });
+
+  const unpaidEntries = useMemo(
+    () => allEntries.filter((e) => e.wage_payment_id == null),
+    [allEntries]
+  );
 
   const {
     items: allKharcha,
@@ -79,8 +78,13 @@ export default function KarigarDetailPage() {
     refresh: refreshAdvances,
   } = useKarigarAdvances(userId, { employeeId });
 
-  const { advances: openAdvances, refresh: refreshOpenAdvances } =
-    useKarigarAdvances(userId, { employeeId, openOnly: true });
+  const openAdvances = useMemo(
+    () =>
+      allAdvances.filter(
+        (a) => Number(a.amount) > Number(a.amount_settled)
+      ),
+    [allAdvances]
+  );
 
   const unpaidKharcha = useMemo(
     () => allKharcha.filter((k) => !k.wage_payment_id),
@@ -169,17 +173,13 @@ export default function KarigarDetailPage() {
     [displayEntries, tab]
   );
 
-  const entriesLoading =
-    authLoading ||
-    empLoading ||
-    (tab === "kaam" && (kaamSub === "unpaid" ? unpaidLoading : allLoading));
+  const kaamLoading =
+    authLoading || empLoading || (tab === "kaam" && workEntriesLoading);
 
   function refreshAllData() {
-    refreshUnpaid();
-    refreshAll();
+    refreshEntries();
     refreshKharcha();
     refreshAdvances();
-    refreshOpenAdvances();
     loadPayments();
     loadEmployee();
   }
@@ -293,7 +293,7 @@ export default function KarigarDetailPage() {
           <p className="text-sm font-semibold" style={{ color: KARIGAR_PENDING.color }}>
             💰 Hisaab
           </p>
-          {empLoading || unpaidLoading ? (
+          {empLoading || workEntriesLoading ? (
             <Skeleton className="mt-2 h-8 w-40" />
           ) : (
             <div className="mt-2 space-y-1 text-sm">
@@ -436,7 +436,7 @@ export default function KarigarDetailPage() {
                 ))}
               </Card>
             )
-          ) : entriesLoading ? (
+          ) : kaamLoading ? (
             Array.from({ length: 3 }).map((_, i) => (
               <Card key={i} className="mb-2">
                 <Skeleton className="h-20 w-full" />

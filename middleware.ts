@@ -31,9 +31,11 @@ export async function middleware(req: NextRequest) {
     }
   );
 
+  // getSession reads the cookie locally; layout still calls getUser() for protection.
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
+  const user = session?.user ?? null;
 
   const path = req.nextUrl.pathname;
   const isProtected = PROTECTED_PREFIXES.some(

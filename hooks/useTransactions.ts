@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { debounce } from "@/lib/debounce";
 import { supabase } from "@/lib/supabase";
 import type { Transaction } from "@/types/database";
 
@@ -75,6 +76,9 @@ export function useTransactions(
     const filterStr = partyId
       ? `party_id=eq.${partyId}`
       : `owner_id=eq.${userId}`;
+    const refetch = debounce(() => {
+      void fetchTx();
+    }, 400);
     const channel = supabase
       .channel(`transactions:${userId}:${partyId ?? "all"}`)
       .on(
@@ -85,12 +89,11 @@ export function useTransactions(
           table: "transactions",
           filter: filterStr,
         },
-        () => {
-          fetchTx();
-        }
+        refetch
       )
       .subscribe();
     return () => {
+      refetch.cancel();
       supabase.removeChannel(channel);
     };
   }, [userId, partyId, fetchTx]);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { debounce } from "@/lib/debounce";
 import { supabase } from "@/lib/supabase";
 import type { Party, PartyBalance } from "@/types/database";
 
@@ -53,6 +54,9 @@ export function usePartyBalances(userId: string | null | undefined): UsePartiesR
 
   useEffect(() => {
     if (!userId) return;
+    const refetch = debounce(() => {
+      void fetchParties();
+    }, 400);
     const channel = supabase
       .channel(`parties:${userId}`)
       .on(
@@ -63,9 +67,7 @@ export function usePartyBalances(userId: string | null | undefined): UsePartiesR
           table: "parties",
           filter: `owner_id=eq.${userId}`,
         },
-        () => {
-          fetchParties();
-        }
+        refetch
       )
       .on(
         "postgres_changes",
@@ -75,12 +77,11 @@ export function usePartyBalances(userId: string | null | undefined): UsePartiesR
           table: "transactions",
           filter: `owner_id=eq.${userId}`,
         },
-        () => {
-          fetchParties();
-        }
+        refetch
       )
       .subscribe();
     return () => {
+      refetch.cancel();
       supabase.removeChannel(channel);
     };
   }, [userId, fetchParties]);

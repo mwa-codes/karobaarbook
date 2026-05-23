@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { Session, User } from "@supabase/supabase-js";
+import { useAuthContext } from "@/components/providers/AuthProvider";
 import { supabase } from "@/lib/supabase";
 
 export interface AuthState {
@@ -11,17 +12,19 @@ export interface AuthState {
 }
 
 export function useAuth(): AuthState & { signOut: () => Promise<void> } {
-  const [state, setState] = useState<AuthState>({
-    loading: true,
+  const ctx = useAuthContext();
+  const [standalone, setStandalone] = useState<AuthState>({
+    loading: ctx === null,
     user: null,
     session: null,
   });
 
   useEffect(() => {
+    if (ctx) return;
     let isMounted = true;
     supabase.auth.getSession().then(({ data }) => {
       if (!isMounted) return;
-      setState({
+      setStandalone({
         loading: false,
         session: data.session,
         user: data.session?.user ?? null,
@@ -30,7 +33,7 @@ export function useAuth(): AuthState & { signOut: () => Promise<void> } {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setState({
+      setStandalone({
         loading: false,
         session,
         user: session?.user ?? null,
@@ -40,11 +43,12 @@ export function useAuth(): AuthState & { signOut: () => Promise<void> } {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [ctx]);
 
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
   }, []);
 
-  return { ...state, signOut };
+  if (ctx) return { ...ctx, signOut: ctx.signOut };
+  return { ...standalone, signOut };
 }

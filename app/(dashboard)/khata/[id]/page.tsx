@@ -16,6 +16,7 @@ import { TransactionRow } from "@/components/khata/TransactionRow";
 import { useAuth } from "@/hooks/useAuth";
 import { fetchParty, fetchPartyBalance } from "@/hooks/useParties";
 import { useTransactions } from "@/hooks/useTransactions";
+import { debounce } from "@/lib/debounce";
 import { supabase } from "@/lib/supabase";
 import { classNames, formatRs, formatPKR } from "@/lib/format";
 import {
@@ -94,6 +95,9 @@ export default function PartyDetailPage() {
   // Realtime: refetch the balance row when transactions for this party change.
   useEffect(() => {
     if (!userId || !partyId) return;
+    const refetch = debounce(() => {
+      void loadParty();
+    }, 400);
     const channel = supabase
       .channel(`party-detail:${partyId}`)
       .on(
@@ -104,12 +108,11 @@ export default function PartyDetailPage() {
           table: "transactions",
           filter: `party_id=eq.${partyId}`,
         },
-        () => {
-          loadParty();
-        }
+        refetch
       )
       .subscribe();
     return () => {
+      refetch.cancel();
       supabase.removeChannel(channel);
     };
   }, [userId, partyId, loadParty]);

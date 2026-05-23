@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { debounce } from "@/lib/debounce";
 import { supabase } from "@/lib/supabase";
 import type { RoznamchaDayResult, RoznamchaEntry } from "@/types/database";
 
@@ -88,6 +89,9 @@ export function useRoznamcha(
   // Realtime: refetch when this user's roznamcha or opening-balance rows change.
   useEffect(() => {
     if (!userId) return;
+    const refetch = debounce(() => {
+      void load();
+    }, 400);
     const channel = supabase
       .channel(`roznamcha:${userId}`)
       .on(
@@ -98,7 +102,7 @@ export function useRoznamcha(
           table: "roznamcha",
           filter: `owner_id=eq.${userId}`,
         },
-        () => load()
+        refetch
       )
       .on(
         "postgres_changes",
@@ -108,10 +112,11 @@ export function useRoznamcha(
           table: "daily_opening_balance",
           filter: `owner_id=eq.${userId}`,
         },
-        () => load()
+        refetch
       )
       .subscribe();
     return () => {
+      refetch.cancel();
       supabase.removeChannel(channel);
     };
   }, [userId, load]);

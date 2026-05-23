@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Logo } from "@/components/ui/Logo";
 import { useToast } from "@/components/ui/Toast";
+import { authErrorMessage } from "@/lib/auth-errors";
 import { supabase } from "@/lib/supabase";
 
 export default function LoginPage() {
@@ -55,10 +56,7 @@ function LoginForm() {
     });
     setSubmitting(false);
     if (err) {
-      const msg =
-        err.message === "Invalid login credentials"
-          ? "Email ya password galat hai."
-          : err.message;
+      const msg = authErrorMessage(err);
       setError(msg);
       toast.error(msg);
       return;
