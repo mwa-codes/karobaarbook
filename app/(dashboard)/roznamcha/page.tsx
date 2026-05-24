@@ -14,7 +14,7 @@ import { DateNavigator } from "@/components/roznamcha/DateNavigator";
 import { EntryCard } from "@/components/roznamcha/EntryCard";
 import { OpeningBalanceCard } from "@/components/roznamcha/OpeningBalanceCard";
 import { OpeningBalanceEditor } from "@/components/roznamcha/OpeningBalanceEditor";
-import { deleteExplicitOpeningBalance } from "@/lib/roznamcha-opening";
+import { clearOpeningBalanceForDay } from "@/lib/roznamcha-opening";
 import { useAuth } from "@/hooks/useAuth";
 import { useRoznamcha } from "@/hooks/useRoznamcha";
 import { useOffline } from "@/context/OfflineContext";
@@ -85,7 +85,7 @@ export default function RoznamchaPage() {
   async function handleDeleteOpening() {
     if (!userId) return;
     setDeleting(true);
-    const result = await deleteExplicitOpeningBalance(userId, selectedDate);
+    const result = await clearOpeningBalanceForDay(userId, selectedDate);
     setDeleting(false);
     if (!result.ok) {
       toast.error("Opening balance delete nahi ho saka.");
@@ -94,7 +94,9 @@ export default function RoznamchaPage() {
     toast.success(
       result.offline
         ? "Offline — delete local save ho gaya."
-        : "Kal ka bakaya delete ho gaya — ab auto calculate hoga."
+        : openingIsExplicit
+          ? "Kal ka bakaya delete ho gaya — ab auto calculate hoga."
+          : "Opening balance Rs 0 set ho gaya."
     );
     await refreshPending();
     setDeleteOpeningOpen(false);
@@ -132,7 +134,7 @@ export default function RoznamchaPage() {
               closingBalance={closingBalance}
               onEditOpening={() => setOpeningSheetOpen(true)}
               onDeleteOpening={
-                openingIsExplicit
+                openingIsExplicit || openingBalance !== 0
                   ? () => setDeleteOpeningOpen(true)
                   : undefined
               }
@@ -279,8 +281,16 @@ export default function RoznamchaPage() {
 
       <ConfirmSheet
         open={deleteOpeningOpen}
-        title="Kal ka bakaya delete karein?"
-        message="Manual opening balance hata diya jayega. Uske baad pichle din ke closing se auto calculate hoga."
+        title={
+          openingIsExplicit
+            ? "Kal ka bakaya delete karein?"
+            : "Opening balance clear karein?"
+        }
+        message={
+          openingIsExplicit
+            ? "Manual opening balance hata diya jayega. Uske baad pichle din ke closing se auto calculate hoga."
+            : "Is din ka opening balance Rs 0 set ho jayega."
+        }
         confirmLabel="Haan, Delete Karo"
         cancelLabel="Nahi"
         variant="danger"

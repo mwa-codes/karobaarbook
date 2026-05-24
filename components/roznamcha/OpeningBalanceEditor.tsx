@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { useOffline } from "@/context/OfflineContext";
 import { localDB } from "@/lib/local-db";
-import { deleteExplicitOpeningBalance } from "@/lib/roznamcha-opening";
+import { clearOpeningBalanceForDay } from "@/lib/roznamcha-opening";
 import { offlineInsert, offlineUpdate } from "@/lib/offline-write";
 import { classNames, formatPKR } from "@/lib/format";
 
@@ -41,8 +41,9 @@ export function OpeningBalanceEditor({
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    const numeric = Number(amount);
-    if (!amount || !Number.isFinite(numeric)) {
+    const trimmed = amount.trim();
+    const numeric = Number(trimmed);
+    if (trimmed === "" || !Number.isFinite(numeric)) {
       setError("Sahi number daalein.");
       return;
     }
@@ -81,23 +82,29 @@ export function OpeningBalanceEditor({
     }
   }
 
-  async function handleReset() {
+  async function handleClear() {
     setSubmitting(true);
     try {
-      const result = await deleteExplicitOpeningBalance(ownerId, date);
-      if (!result.ok) throw new Error("Reset nahi ho saka.");
+      const result = await clearOpeningBalanceForDay(ownerId, date);
+      if (!result.ok) throw new Error("Delete nahi ho saka.");
 
-      toast.success("Opening balance delete ho gaya (ab auto-calculate).");
+      toast.success(
+        isExplicit
+          ? "Opening balance delete ho gaya (ab auto-calculate)."
+          : "Opening balance Rs 0 set ho gaya."
+      );
       await refreshPending();
       onSaved();
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Reset nahi ho saka.";
+      const message = err instanceof Error ? err.message : "Delete nahi ho saka.";
       setError(message);
-      toast.error("Reset nahi ho saka.");
+      toast.error("Delete nahi ho saka.");
     } finally {
       setSubmitting(false);
     }
   }
+
+  const canClear = isExplicit || currentOpening !== 0;
 
   const numeric = Number(amount);
   const preview = Number.isFinite(numeric) ? formatPKR(numeric) : "0";
@@ -159,14 +166,16 @@ export function OpeningBalanceEditor({
         </Button>
       </div>
 
-      {isExplicit ? (
+      {canClear ? (
         <button
           type="button"
-          onClick={handleReset}
+          onClick={handleClear}
           disabled={submitting}
           className="text-center text-sm font-semibold text-dena hover:underline"
         >
-          Delete karein (auto-calculate wapas)
+          {isExplicit
+            ? "Delete karein (auto-calculate wapas)"
+            : "Opening balance hata dein (Rs 0)"}
         </button>
       ) : null}
     </form>

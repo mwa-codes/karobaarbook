@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { debounce } from "@/lib/debounce";
 import { localDB, withSync, type LocalTransaction } from "@/lib/local-db";
+import { reconcileTransactionsFromServer } from "@/lib/reconcile-transactions";
 import { supabase } from "@/lib/supabase";
 import type { Transaction } from "@/types/database";
 
@@ -29,6 +30,15 @@ function stripSync(row: LocalTransaction): TransactionWithSync {
   return rest;
 }
 
+async function activePartyIds(ownerId: string): Promise<Set<string>> {
+  const parties = await localDB.parties
+    .where("owner_id")
+    .equals(ownerId)
+    .and((p) => p._deleted === 0)
+    .toArray();
+  return new Set(parties.map((p) => p.id));
+}
+
 export function useTransactions(
   userId: string | null | undefined,
   options: Options = {}
@@ -48,6 +58,8 @@ export function useTransactions(
       return;
     }
 
+    const partyIds = partyId ? new Set([partyId]) : await activePartyIds(userId);
+
     let rows: LocalTransaction[];
     if (partyId) {
       rows = await localDB.transactions
@@ -62,6 +74,8 @@ export function useTransactions(
         .and((t) => t._deleted === 0)
         .toArray();
     }
+
+    rows = rows.filter((t) => partyIds.has(t.party_id));
 
     rows.sort((a, b) => {
       const d = b.transaction_date.localeCompare(a.transaction_date);
@@ -87,7 +101,9 @@ export function useTransactions(
       return;
     }
     if (data) {
-      await localDB.transactions.bulkPut(data.map((r) => withSync(r)));
+      const synced = data.map((r) => withSync(r));
+      await localDB.transactions.bulkPut(synced);
+      await reconcileTransactionsFromServer(userId, synced);
       await loadLocal();
     }
   }, [userId, partyId, loadLocal]);

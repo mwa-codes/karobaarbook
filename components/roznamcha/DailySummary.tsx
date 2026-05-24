@@ -35,7 +35,8 @@ export function DailySummary({
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
-          {openingIsExplicit && onDeleteOpening ? (
+          {onDeleteOpening &&
+          (openingIsExplicit || openingBalance !== 0) ? (
             <button
               type="button"
               onClick={onDeleteOpening}

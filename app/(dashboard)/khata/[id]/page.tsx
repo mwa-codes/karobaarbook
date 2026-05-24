@@ -19,6 +19,7 @@ import { useTransactions } from "@/hooks/useTransactions";
 import { debounce } from "@/lib/debounce";
 import { supabase } from "@/lib/supabase";
 import { useOffline } from "@/context/OfflineContext";
+import { deletePartyWithTransactions } from "@/lib/delete-party";
 import { offlineDelete } from "@/lib/offline-write";
 import { classNames, formatRs, formatPKR } from "@/lib/format";
 import {
@@ -182,7 +183,7 @@ export default function PartyDetailPage() {
   async function handleDeleteParty() {
     if (!party || !userId) return;
     setDeletingParty(true);
-    const result = await offlineDelete("parties", "parties", party.id);
+    const result = await deletePartyWithTransactions(party.id, userId);
     setDeletingParty(false);
     if (!result.ok) {
       toast.error("Party delete nahi hui.");

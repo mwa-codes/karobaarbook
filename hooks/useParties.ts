@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { debounce } from "@/lib/debounce";
 import { localDB, withSync } from "@/lib/local-db";
+import { reconcileTransactionsFromServer } from "@/lib/reconcile-transactions";
 import { supabase } from "@/lib/supabase";
 import type { Party, PartyBalance } from "@/types/database";
 
@@ -93,9 +94,9 @@ export function usePartyBalances(
       );
     }
     if (txRes.data) {
-      await localDB.transactions.bulkPut(
-        txRes.data.map((r) => withSync(r))
-      );
+      const synced = txRes.data.map((r) => withSync(r));
+      await localDB.transactions.bulkPut(synced);
+      await reconcileTransactionsFromServer(userId, synced);
     }
     await loadLocal();
   }, [userId, loadLocal]);
