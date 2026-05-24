@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { debounce } from "@/lib/debounce";
+import { localDB, withSync } from "@/lib/local-db";
 import { supabase } from "@/lib/supabase";
 import type { Party, PartyBalance } from "@/types/database";
 
@@ -14,48 +15,109 @@ export interface UsePartiesResult {
   refresh: () => Promise<void>;
 }
 
-export function usePartyBalances(userId: string | null | undefined): UsePartiesResult {
+async function computeLocalBalances(ownerId: string): Promise<PartyBalance[]> {
+  const parties = await localDB.parties
+    .where("owner_id")
+    .equals(ownerId)
+    .and((p) => p._deleted === 0 && p.is_active)
+    .toArray();
+
+  const allTx = await localDB.transactions
+    .where("owner_id")
+    .equals(ownerId)
+    .and((t) => t._deleted === 0)
+    .toArray();
+
+  return parties.map((p) => {
+    const partyTx = allTx.filter((t) => t.party_id === p.id);
+    const totalLena = partyTx
+      .filter((t) => t.type === "lena")
+      .reduce((s, t) => s + Number(t.amount), 0);
+    const totalDena = partyTx
+      .filter((t) => t.type === "dena")
+      .reduce((s, t) => s + Number(t.amount), 0);
+    return {
+      party_id: p.id,
+      owner_id: p.owner_id,
+      name: p.name,
+      type: p.type,
+      phone: p.phone,
+      is_active: p.is_active,
+      total_lena: totalLena,
+      total_dena: totalDena,
+      net_balance: totalLena - totalDena,
+    } satisfies PartyBalance;
+  });
+}
+
+export function usePartyBalances(
+  userId: string | null | undefined
+): UsePartiesResult {
   const [parties, setParties] = useState<PartyBalance[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const aliveRef = useRef(true);
 
-  const fetchParties = useCallback(async () => {
+  const loadLocal = useCallback(async () => {
     if (!userId) {
       setParties([]);
       setLoading(false);
       return;
     }
-    setError(null);
-    const { data, error: err } = await supabase
-      .from("party_balances")
-      .select("*")
-      .eq("owner_id", userId)
-      .eq("is_active", true)
-      .order("net_balance", { ascending: false });
+    const balances = await computeLocalBalances(userId);
     if (!aliveRef.current) return;
-    if (err) {
-      setError(err.message);
-      setParties([]);
-    } else {
-      setParties((data ?? []) as PartyBalance[]);
-    }
+    setParties(balances.sort((a, b) => b.net_balance - a.net_balance));
     setLoading(false);
   }, [userId]);
+
+  const syncFromServer = useCallback(async () => {
+    if (!userId || !navigator.onLine) return;
+    setError(null);
+    const [partiesRes, txRes] = await Promise.all([
+      supabase.from("parties").select("*").eq("owner_id", userId),
+      supabase.from("transactions").select("*").eq("owner_id", userId),
+    ]);
+    if (partiesRes.error) {
+      if (!aliveRef.current) return;
+      setError(partiesRes.error.message);
+      return;
+    }
+    if (txRes.error) {
+      if (!aliveRef.current) return;
+      setError(txRes.error.message);
+      return;
+    }
+    if (partiesRes.data) {
+      await localDB.parties.bulkPut(
+        partiesRes.data.map((r) => withSync(r))
+      );
+    }
+    if (txRes.data) {
+      await localDB.transactions.bulkPut(
+        txRes.data.map((r) => withSync(r))
+      );
+    }
+    await loadLocal();
+  }, [userId, loadLocal]);
+
+  const refresh = useCallback(async () => {
+    await loadLocal();
+    await syncFromServer();
+  }, [loadLocal, syncFromServer]);
 
   useEffect(() => {
     aliveRef.current = true;
     setLoading(true);
-    fetchParties();
+    loadLocal().then(syncFromServer);
     return () => {
       aliveRef.current = false;
     };
-  }, [fetchParties]);
+  }, [loadLocal, syncFromServer]);
 
   useEffect(() => {
     if (!userId) return;
     const refetch = debounce(() => {
-      void fetchParties();
+      void refresh();
     }, 400);
     const channel = supabase
       .channel(`parties:${userId}`)
@@ -84,15 +146,22 @@ export function usePartyBalances(userId: string | null | undefined): UsePartiesR
       refetch.cancel();
       supabase.removeChannel(channel);
     };
-  }, [userId, fetchParties]);
+  }, [userId, refresh]);
 
-  return { loading, error, parties, refresh: fetchParties };
+  return { loading, error, parties, refresh };
 }
 
 export async function fetchParty(
   partyId: string,
   ownerId: string
 ): Promise<Party | null> {
+  const local = await localDB.parties.get(partyId);
+  if (local && local._deleted === 0 && local.owner_id === ownerId) {
+    const { _synced, _deleted, _local_id, ...party } = local;
+    return party;
+  }
+  if (!navigator.onLine) return null;
+
   const { data, error } = await supabase
     .from("parties")
     .select("*")
@@ -100,6 +169,7 @@ export async function fetchParty(
     .eq("owner_id", ownerId)
     .maybeSingle();
   if (error) throw error;
+  if (data) await localDB.parties.put(withSync(data));
   return (data as Party | null) ?? null;
 }
 
@@ -107,6 +177,12 @@ export async function fetchPartyBalance(
   partyId: string,
   ownerId: string
 ): Promise<PartyBalance | null> {
+  const balances = await computeLocalBalances(ownerId);
+  const found = balances.find((b) => b.party_id === partyId);
+  if (found) return found;
+
+  if (!navigator.onLine) return null;
+
   const { data, error } = await supabase
     .from("party_balances")
     .select("*")

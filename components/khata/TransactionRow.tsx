@@ -7,9 +7,10 @@ import type {
   Transaction,
   TransactionCategory,
 } from "@/types/database";
+import { SyncPendingBadge, isSyncPending } from "@/components/ui/SyncPendingBadge";
 
 export interface TransactionRowProps {
-  transaction: Transaction;
+  transaction: Transaction & { _synced?: 0 | 1 };
   /** Running balance AFTER this transaction is applied. */
   runningBalance: number;
   onEdit?: (t: Transaction) => void;
@@ -69,6 +70,7 @@ export function TransactionRow({
             >
               {CATEGORY_LABEL[transaction.transaction_category]}
             </span>
+            <SyncPendingBadge pending={isSyncPending(transaction)} />
             {showMode ? (
               <span className="inline-flex items-center gap-1 rounded-full bg-page px-2 py-0.5 text-[10px] font-semibold text-ink-500">
                 <span>{mode.icon}</span>

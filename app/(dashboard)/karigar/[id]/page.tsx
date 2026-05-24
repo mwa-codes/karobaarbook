@@ -25,6 +25,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { useWorkEntries } from "@/hooks/useWorkEntries";
 import { useKarigarKharcha } from "@/hooks/useKarigarKharcha";
 import { useKarigarAdvances, advanceBalance } from "@/hooks/useKarigarAdvances";
+import { useOffline } from "@/context/OfflineContext";
+import { offlineDelete } from "@/lib/offline-write";
+import { localDB, withSync } from "@/lib/local-db";
 import { supabase } from "@/lib/supabase";
 import { classNames, formatPKR, formatRs } from "@/lib/format";
 import {
@@ -51,6 +54,7 @@ export default function KarigarDetailPage() {
   const employeeId = params?.id as string;
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  const { refreshPending } = useOffline();
   const userId = user?.id ?? null;
 
   const [employee, setEmployee] = useState<Employee | null>(null);
@@ -108,6 +112,17 @@ export default function KarigarDetailPage() {
 
   const loadEmployee = useCallback(async () => {
     if (!userId || !employeeId) return;
+    const local = await localDB.employees.get(employeeId);
+    if (local && local._deleted === 0 && local.owner_id === userId) {
+      const { _synced, _deleted, _local_id, ...emp } = local;
+      setEmployee(emp);
+      setEmpLoading(false);
+    }
+    if (!navigator.onLine) {
+      if (!local) setEmployee(null);
+      setEmpLoading(false);
+      return;
+    }
     const { data, error } = await supabase
       .from("employees")
       .select("*")
@@ -115,9 +130,10 @@ export default function KarigarDetailPage() {
       .eq("owner_id", userId)
       .single();
     if (error) {
-      setEmployee(null);
+      if (!local) setEmployee(null);
     } else {
       setEmployee(data as Employee);
+      await localDB.employees.put(withSync(data as Employee));
     }
     setEmpLoading(false);
   }, [userId, employeeId]);
@@ -193,13 +209,13 @@ export default function KarigarDetailPage() {
     if (!deleteTarget || !userId) return;
     setDeleting(true);
     try {
-      const { error } = await supabase
-        .from("karigar_work_entries")
-        .delete()
-        .eq("id", deleteTarget.id)
-        .eq("owner_id", userId)
-        .is("wage_payment_id", null);
-      if (error) throw error;
+      const result = await offlineDelete(
+        "karigar_work_entries",
+        "karigar_work_entries",
+        deleteTarget.id
+      );
+      if (!result.ok) throw new Error("Delete failed");
+      await refreshPending();
       refreshAllData();
       setDeleteTarget(null);
     } catch (err) {
@@ -213,13 +229,13 @@ export default function KarigarDetailPage() {
     if (!deleteKharcha || !userId) return;
     setDeleting(true);
     try {
-      const { error } = await supabase
-        .from("karigar_kharcha")
-        .delete()
-        .eq("id", deleteKharcha.id)
-        .eq("owner_id", userId)
-        .is("wage_payment_id", null);
-      if (error) throw error;
+      const result = await offlineDelete(
+        "karigar_kharcha",
+        "karigar_kharcha",
+        deleteKharcha.id
+      );
+      if (!result.ok) throw new Error("Delete failed");
+      await refreshPending();
       refreshAllData();
       setDeleteKharcha(null);
     } finally {
@@ -231,13 +247,13 @@ export default function KarigarDetailPage() {
     if (!deleteAdvance || !userId) return;
     setDeleting(true);
     try {
-      const { error } = await supabase
-        .from("karigar_advances")
-        .delete()
-        .eq("id", deleteAdvance.id)
-        .eq("owner_id", userId)
-        .eq("amount_settled", 0);
-      if (error) throw error;
+      const result = await offlineDelete(
+        "karigar_advances",
+        "karigar_advances",
+        deleteAdvance.id
+      );
+      if (!result.ok) throw new Error("Delete failed");
+      await refreshPending();
       refreshAllData();
       setDeleteAdvance(null);
     } finally {

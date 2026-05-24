@@ -5,13 +5,15 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
-import { supabase } from "@/lib/supabase";
+import { useOffline } from "@/context/OfflineContext";
+import { offlineInsert } from "@/lib/offline-write";
 import { classNames, todayIso } from "@/lib/format";
 import type { WorkType } from "@/types/database";
 
 export function AddKarigarForm({ ownerId }: { ownerId: string }) {
   const router = useRouter();
   const toast = useToast();
+  const { refreshPending } = useOffline();
 
   const [name, setName] = useState("");
   const [role, setRole] = useState("");
@@ -32,7 +34,7 @@ export function AddKarigarForm({ ownerId }: { ownerId: string }) {
     setSubmitting(true);
     try {
       const defaultRate = rateAmount.trim() ? Number(rateAmount) : 0;
-      const { error } = await supabase.from("employees").insert({
+      const result = await offlineInsert("employees", "employees", {
         owner_id: ownerId,
         name: name.trim(),
         role: role.trim() || null,
@@ -42,8 +44,12 @@ export function AddKarigarForm({ ownerId }: { ownerId: string }) {
         joining_date: joiningDate,
         is_active: true,
       });
-      if (error) throw error;
-      toast.success("Karigar add ho gaya.");
+      toast.success(
+        result.offline
+          ? "Offline — karigar local save ho gaya."
+          : "Karigar add ho gaya."
+      );
+      await refreshPending();
       router.replace("/karigar");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Save nahi ho saka.");

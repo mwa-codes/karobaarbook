@@ -5,7 +5,12 @@ import { FormEvent, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input, TextArea } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
-import { supabase } from "@/lib/supabase";
+import { useOffline } from "@/context/OfflineContext";
+import {
+  offlineInsert,
+  offlineUpdate,
+  readLocalRow,
+} from "@/lib/offline-write";
 import { classNames } from "@/lib/format";
 import type { Party, PartyType } from "@/types/database";
 
@@ -18,6 +23,7 @@ export interface AddPartyFormProps {
 export function AddPartyForm({ ownerId, initial, onSaved }: AddPartyFormProps) {
   const router = useRouter();
   const toast = useToast();
+  const { refreshPending } = useOffline();
 
   const [name, setName] = useState(initial?.name ?? "");
   const [type, setType] = useState<PartyType>(initial?.type ?? "customer");
@@ -36,42 +42,42 @@ export function AddPartyForm({ ownerId, initial, onSaved }: AddPartyFormProps) {
 
     setSubmitting(true);
     try {
+      const fields = {
+        name: name.trim(),
+        type,
+        phone: phone.trim() || null,
+        address: address.trim() || null,
+        notes: notes.trim() || null,
+        is_active: true,
+      };
+
       if (initial) {
-        const { data, error } = await supabase
-          .from("parties")
-          .update({
-            name: name.trim(),
-            type,
-            phone: phone.trim() || null,
-            address: address.trim() || null,
-            notes: notes.trim() || null,
-          })
-          .eq("id", initial.id)
-          .eq("owner_id", ownerId)
-          .select("*")
-          .single();
-        if (error) throw error;
-        toast.success("Update ho gaya.");
-        if (onSaved) onSaved(data as Party);
-        else router.push(`/khata/${(data as Party).id}`);
+        const result = await offlineUpdate("parties", "parties", initial.id, fields);
+        const party = await readLocalRow<Party>("parties", result.id);
+        if (!party) throw new Error("Save nahi ho saka.");
+        toast.success(
+          result.offline
+            ? "Offline — update local save ho gaya."
+            : "Update ho gaya."
+        );
+        if (onSaved) onSaved(party);
+        else router.push(`/khata/${party.id}`);
       } else {
-        const { data, error } = await supabase
-          .from("parties")
-          .insert({
-            owner_id: ownerId,
-            name: name.trim(),
-            type,
-            phone: phone.trim() || null,
-            address: address.trim() || null,
-            notes: notes.trim() || null,
-          })
-          .select("*")
-          .single();
-        if (error) throw error;
-        toast.success("Party add ho gayi.");
-        if (onSaved) onSaved(data as Party);
-        else router.replace(`/khata/${(data as Party).id}`);
+        const result = await offlineInsert("parties", "parties", {
+          owner_id: ownerId,
+          ...fields,
+        });
+        const party = await readLocalRow<Party>("parties", result.id);
+        if (!party) throw new Error("Save nahi ho saka.");
+        toast.success(
+          result.offline
+            ? "Offline — party local save ho gayi, internet pe sync ho jaegi."
+            : "Party add ho gayi."
+        );
+        if (onSaved) onSaved(party);
+        else router.replace(`/khata/${party.id}`);
       }
+      await refreshPending();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Save nahi ho saka.";
       toast.error(message);

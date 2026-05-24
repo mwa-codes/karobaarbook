@@ -9,12 +9,13 @@ import {
 } from "@/lib/karigar";
 import { TrashIcon } from "@/components/ui/Icons";
 import type { KarigarWorkEntry } from "@/types/database";
+import { SyncPendingBadge, isSyncPending } from "@/components/ui/SyncPendingBadge";
 
 export function WorkEntryCard({
   entry,
   onDelete,
 }: {
-  entry: KarigarWorkEntry;
+  entry: KarigarWorkEntry & { _synced?: 0 | 1 };
   onDelete?: (entry: KarigarWorkEntry) => void;
 }) {
   const isPaid = entry.wage_payment_id != null;
@@ -37,6 +38,7 @@ export function WorkEntryCard({
         <p className="mt-0.5 font-mono text-sm font-semibold text-ink-900">
           {formatPKR(qty)} {workTypeUnit(entry.work_type)} × Rs. {formatPKR(rate)}{" "}
           = Rs. {formatPKR(amount)}
+          <SyncPendingBadge pending={isSyncPending(entry)} />
         </p>
         {entry.description ? (
           <p className="mt-0.5 text-xs text-ink-500">{entry.description}</p>

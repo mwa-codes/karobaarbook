@@ -15,7 +15,8 @@ import { EntryCard } from "@/components/roznamcha/EntryCard";
 import { OpeningBalanceEditor } from "@/components/roznamcha/OpeningBalanceEditor";
 import { useAuth } from "@/hooks/useAuth";
 import { useRoznamcha } from "@/hooks/useRoznamcha";
-import { supabase } from "@/lib/supabase";
+import { useOffline } from "@/context/OfflineContext";
+import { offlineDelete } from "@/lib/offline-write";
 import { todayIso } from "@/lib/format";
 import type { RoznamchaEntry, RoznamchaType } from "@/types/database";
 
@@ -23,6 +24,7 @@ export default function RoznamchaPage() {
   const { user, loading: authLoading } = useAuth();
   const userId = user?.id ?? null;
   const toast = useToast();
+  const { refreshPending } = useOffline();
 
   const [selectedDate, setSelectedDate] = useState<string>(todayIso());
 
@@ -61,17 +63,18 @@ export default function RoznamchaPage() {
   async function handleDelete() {
     if (!deleteTarget || !userId) return;
     setDeleting(true);
-    const { error: err } = await supabase
-      .from("roznamcha")
-      .delete()
-      .eq("id", deleteTarget.id)
-      .eq("owner_id", userId);
+    const result = await offlineDelete("roznamcha", "roznamcha", deleteTarget.id);
     setDeleting(false);
-    if (err) {
+    if (!result.ok) {
       toast.error("Delete nahi ho saka.");
       return;
     }
-    toast.success("Entry delete ho gayi.");
+    toast.success(
+      result.offline
+        ? "Offline — delete local save ho gaya."
+        : "Entry delete ho gayi."
+    );
+    await refreshPending();
     setDeleteTarget(null);
     refresh();
   }

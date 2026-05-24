@@ -18,6 +18,8 @@ import { fetchParty, fetchPartyBalance } from "@/hooks/useParties";
 import { useTransactions } from "@/hooks/useTransactions";
 import { debounce } from "@/lib/debounce";
 import { supabase } from "@/lib/supabase";
+import { useOffline } from "@/context/OfflineContext";
+import { offlineDelete } from "@/lib/offline-write";
 import { classNames, formatRs, formatPKR } from "@/lib/format";
 import {
   openWhatsApp,
@@ -37,6 +39,7 @@ export default function PartyDetailPage() {
   const partyId = params?.id as string;
   const router = useRouter();
   const toast = useToast();
+  const { refreshPending } = useOffline();
   const { user, loading: authLoading } = useAuth();
   const userId = user?.id ?? null;
 
@@ -155,17 +158,22 @@ export default function PartyDetailPage() {
   async function handleDeleteTransaction() {
     if (!deleteTarget || !userId) return;
     setDeletingId(deleteTarget.id);
-    const { error } = await supabase
-      .from("transactions")
-      .delete()
-      .eq("id", deleteTarget.id)
-      .eq("owner_id", userId);
+    const result = await offlineDelete(
+      "transactions",
+      "transactions",
+      deleteTarget.id
+    );
     setDeletingId(null);
-    if (error) {
+    if (!result.ok) {
       toast.error("Delete nahi ho saka.");
       return;
     }
-    toast.success("Entry delete ho gayi.");
+    toast.success(
+      result.offline
+        ? "Offline — delete local save ho gaya."
+        : "Entry delete ho gayi."
+    );
+    await refreshPending();
     setDeleteTarget(null);
     refreshTx();
     loadParty();
@@ -174,17 +182,18 @@ export default function PartyDetailPage() {
   async function handleDeleteParty() {
     if (!party || !userId) return;
     setDeletingParty(true);
-    const { error } = await supabase
-      .from("parties")
-      .delete()
-      .eq("id", party.id)
-      .eq("owner_id", userId);
+    const result = await offlineDelete("parties", "parties", party.id);
     setDeletingParty(false);
-    if (error) {
+    if (!result.ok) {
       toast.error("Party delete nahi hui.");
       return;
     }
-    toast.success("Party delete ho gayi.");
+    toast.success(
+      result.offline
+        ? "Offline — delete local save ho gaya."
+        : "Party delete ho gayi."
+    );
+    await refreshPending();
     setDeletePartyOpen(false);
     router.replace("/khata");
     router.refresh();

@@ -3,6 +3,7 @@
 import { EditIcon, TrashIcon } from "@/components/ui/Icons";
 import { classNames, formatPKR, formatDateShort } from "@/lib/format";
 import type { PaymentMode, RoznamchaEntry } from "@/types/database";
+import { SyncPendingBadge, isSyncPending } from "@/components/ui/SyncPendingBadge";
 
 const PAYMENT_MODE_META: Record<
   PaymentMode,
@@ -15,7 +16,7 @@ const PAYMENT_MODE_META: Record<
 };
 
 export interface EntryCardProps {
-  entry: RoznamchaEntry;
+  entry: RoznamchaEntry & { _synced?: 0 | 1 };
   onEdit?: (e: RoznamchaEntry) => void;
   onDelete?: (e: RoznamchaEntry) => void;
 }
@@ -36,6 +37,7 @@ export function EntryCard({ entry, onEdit, onDelete }: EntryCardProps) {
           <p className="truncate text-[15px] font-semibold text-ink-900">
             <span className="mr-1">{isIncome ? "💰" : "🛒"}</span>
             {entry.description}
+            <SyncPendingBadge pending={isSyncPending(entry)} />
           </p>
           <p className="mt-1 text-[12px] text-ink-500">
             <span

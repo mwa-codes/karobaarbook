@@ -5,7 +5,8 @@ import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
-import { supabase } from "@/lib/supabase";
+import { useOffline } from "@/context/OfflineContext";
+import { offlineInsert } from "@/lib/offline-write";
 import { todayIso } from "@/lib/format";
 
 export function AddKharchaForm({
@@ -22,6 +23,7 @@ export function AddKharchaForm({
   onSaved: () => void;
 }) {
   const toast = useToast();
+  const { refreshPending } = useOffline();
   const [entryDate, setEntryDate] = useState(todayIso());
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
@@ -36,7 +38,7 @@ export function AddKharchaForm({
     }
     setSubmitting(true);
     try {
-      const { error } = await supabase.from("karigar_kharcha").insert({
+      const result = await offlineInsert("karigar_kharcha", "karigar_kharcha", {
         owner_id: ownerId,
         employee_id: employeeId,
         entry_date: entryDate,
@@ -44,8 +46,12 @@ export function AddKharchaForm({
         description: description.trim() || null,
         wage_payment_id: null,
       });
-      if (error) throw error;
-      toast.success("Kharcha log ho gayi.");
+      toast.success(
+        result.offline
+          ? "Offline — kharcha local save ho gayi."
+          : "Kharcha log ho gayi."
+      );
+      await refreshPending();
       setAmount("");
       setDescription("");
       setEntryDate(todayIso());

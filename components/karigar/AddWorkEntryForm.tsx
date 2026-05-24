@@ -5,7 +5,8 @@ import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
-import { supabase } from "@/lib/supabase";
+import { useOffline } from "@/context/OfflineContext";
+import { offlineInsert } from "@/lib/offline-write";
 import { classNames, formatPKR, todayIso } from "@/lib/format";
 import type { Employee, WorkType } from "@/types/database";
 
@@ -41,6 +42,7 @@ export function AddWorkEntryForm({
   onSaved: () => void;
 }) {
   const toast = useToast();
+  const { refreshPending } = useOffline();
   const [entryDate, setEntryDate] = useState(todayIso());
   const [rows, setRows] = useState<Row[]>(() => [
     newRow(employee.rate_type, Number(employee.rate_amount)),
@@ -87,20 +89,32 @@ export function AddWorkEntryForm({
 
     setSubmitting(true);
     try {
-      const { error } = await supabase.from("karigar_work_entries").insert(
-        rows.map((row) => ({
-          owner_id: ownerId,
-          employee_id: employee.id,
-          entry_date: entryDate,
-          work_type: row.workType,
-          quantity: Number(row.quantity),
-          rate: Number(row.rate),
-          description: row.description.trim() || null,
-          wage_payment_id: null,
-        }))
+      for (const row of rows) {
+        const q = Number(row.quantity);
+        const rate = Number(row.rate);
+        const result = await offlineInsert(
+          "karigar_work_entries",
+          "karigar_work_entries",
+          {
+            owner_id: ownerId,
+            employee_id: employee.id,
+            entry_date: entryDate,
+            work_type: row.workType,
+            quantity: q,
+            rate,
+            amount: q * rate,
+            description: row.description.trim() || null,
+            wage_payment_id: null,
+          }
+        );
+        if (!result.ok) throw new Error("Save nahi ho saka.");
+      }
+      toast.success(
+        navigator.onLine
+          ? "Work Add Ho Gaya."
+          : "Offline — entry local save ho gayi, internet pe sync ho jaegi."
       );
-      if (error) throw error;
-      toast.success("Work Add Ho Gaya.");
+      await refreshPending();
       setRows([newRow(employee.rate_type, Number(employee.rate_amount))]);
       setEntryDate(todayIso());
       onSaved();

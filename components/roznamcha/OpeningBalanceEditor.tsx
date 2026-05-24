@@ -3,7 +3,13 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
-import { supabase } from "@/lib/supabase";
+import { useOffline } from "@/context/OfflineContext";
+import { localDB } from "@/lib/local-db";
+import {
+  offlineDelete,
+  offlineInsert,
+  offlineUpdate,
+} from "@/lib/offline-write";
 import { classNames, formatPKR } from "@/lib/format";
 
 export interface OpeningBalanceEditorProps {
@@ -25,6 +31,7 @@ export function OpeningBalanceEditor({
   onCancel,
 }: OpeningBalanceEditorProps) {
   const toast = useToast();
+  const { refreshPending } = useOffline();
   const inputRef = useRef<HTMLInputElement>(null);
   const [amount, setAmount] = useState<string>(String(currentOpening || 0));
   const [submitting, setSubmitting] = useState(false);
@@ -45,18 +52,28 @@ export function OpeningBalanceEditor({
     setError(null);
     setSubmitting(true);
     try {
-      const { error: err } = await supabase
-        .from("daily_opening_balance")
-        .upsert(
-          {
+      const existing = await localDB.daily_opening_balance
+        .where("owner_id")
+        .equals(ownerId)
+        .and((r) => r._deleted === 0 && r.entry_date === date)
+        .first();
+
+      const result = existing
+        ? await offlineUpdate("daily_opening_balance", "daily_opening_balance", existing.id, {
+            opening_balance: numeric,
+          })
+        : await offlineInsert("daily_opening_balance", "daily_opening_balance", {
             owner_id: ownerId,
             entry_date: date,
             opening_balance: numeric,
-          },
-          { onConflict: "owner_id,entry_date" }
-        );
-      if (err) throw err;
-      toast.success("Opening balance update ho gaya.");
+          });
+
+      toast.success(
+        result.offline
+          ? "Offline — opening balance local save ho gaya."
+          : "Opening balance update ho gaya."
+      );
+      await refreshPending();
       onSaved();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Save nahi ho saka.";
@@ -70,13 +87,23 @@ export function OpeningBalanceEditor({
   async function handleReset() {
     setSubmitting(true);
     try {
-      const { error: err } = await supabase
-        .from("daily_opening_balance")
-        .delete()
-        .eq("owner_id", ownerId)
-        .eq("entry_date", date);
-      if (err) throw err;
+      const existing = await localDB.daily_opening_balance
+        .where("owner_id")
+        .equals(ownerId)
+        .and((r) => r._deleted === 0 && r.entry_date === date)
+        .first();
+
+      if (existing) {
+        const result = await offlineDelete(
+          "daily_opening_balance",
+          "daily_opening_balance",
+          existing.id
+        );
+        if (!result.ok) throw new Error("Reset nahi ho saka.");
+      }
+
       toast.success("Opening balance reset ho gaya (auto-calculate).");
+      await refreshPending();
       onSaved();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Reset nahi ho saka.";

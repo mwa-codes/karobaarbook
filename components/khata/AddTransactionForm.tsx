@@ -4,7 +4,12 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input, TextArea } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
-import { supabase } from "@/lib/supabase";
+import { useOffline } from "@/context/OfflineContext";
+import {
+  offlineInsert,
+  offlineUpdate,
+  readLocalRow,
+} from "@/lib/offline-write";
 import { classNames, formatPKR, todayIso } from "@/lib/format";
 import type {
   PartyType,
@@ -114,6 +119,7 @@ export function AddTransactionForm({
   onCancel,
 }: AddTransactionFormProps) {
   const toast = useToast();
+  const { refreshPending } = useOffline();
   const amountRef = useRef<HTMLInputElement>(null);
 
   const categories = useMemo(() => categoriesFor(partyType), [partyType]);
@@ -162,48 +168,51 @@ export function AddTransactionForm({
     setError(null);
     setSubmitting(true);
     try {
+      const payload = {
+        amount: numeric,
+        type: effectiveType,
+        transaction_category: category,
+        payment_mode: paymentMode,
+        description: description.trim() || null,
+        transaction_date: date,
+      };
+
       if (editing) {
-        const { data, error: err } = await supabase
-          .from("transactions")
-          .update({
-            amount: numeric,
-            type: effectiveType,
-            transaction_category: category,
-            payment_mode: paymentMode,
-            description: description.trim() || null,
-            transaction_date: date,
-          })
-          .eq("id", editing.id)
-          .eq("owner_id", ownerId)
-          .select("*")
-          .single();
-        if (err) throw err;
-        toast.success("Update ho gaya.");
-        onSaved(data as Transaction);
+        const result = await offlineUpdate(
+          "transactions",
+          "transactions",
+          editing.id,
+          payload
+        );
+        const saved = await readLocalRow<Transaction>("transactions", result.id);
+        if (!saved) throw new Error("Save nahi ho saka.");
+        toast.success(
+          result.offline
+            ? "Offline — update local save ho gaya, internet pe sync ho jaega."
+            : "Update ho gaya."
+        );
+        onSaved(saved);
       } else {
-        const { data, error: err } = await supabase
-          .from("transactions")
-          .insert({
-            owner_id: ownerId,
-            party_id: partyId,
-            amount: numeric,
-            type: effectiveType,
-            transaction_category: category,
-            payment_mode: paymentMode,
-            description: description.trim() || null,
-            transaction_date: date,
-          })
-          .select("*")
-          .single();
-        if (err) throw err;
-        toast.success(`${CATEGORY_LABEL[category]} save ho gaya.`);
-        onSaved(data as Transaction);
+        const result = await offlineInsert("transactions", "transactions", {
+          owner_id: ownerId,
+          party_id: partyId,
+          ...payload,
+        });
+        const saved = await readLocalRow<Transaction>("transactions", result.id);
+        if (!saved) throw new Error("Save nahi ho saka.");
+        toast.success(
+          result.offline
+            ? "Offline — entry local save ho gayi, internet pe sync ho jaegi."
+            : `${CATEGORY_LABEL[category]} save ho gaya.`
+        );
+        onSaved(saved);
       }
+      await refreshPending();
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Save nahi ho saka.";
       setError(message);
-      toast.error("Save nahi ho saka. Internet check karein.");
+      toast.error(message);
     } finally {
       setSubmitting(false);
     }

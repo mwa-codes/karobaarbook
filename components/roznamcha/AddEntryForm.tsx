@@ -4,7 +4,12 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input, TextArea } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
-import { supabase } from "@/lib/supabase";
+import { useOffline } from "@/context/OfflineContext";
+import {
+  offlineInsert,
+  offlineUpdate,
+  readLocalRow,
+} from "@/lib/offline-write";
 import { classNames, formatPKR, todayIso } from "@/lib/format";
 import type {
   PaymentMode,
@@ -53,6 +58,7 @@ export function AddEntryForm({
   onCancel,
 }: AddEntryFormProps) {
   const toast = useToast();
+  const { refreshPending } = useOffline();
   const amountRef = useRef<HTMLInputElement>(null);
 
   const [type, setType] = useState<RoznamchaType>(editing?.type ?? initialType);
@@ -96,48 +102,49 @@ export function AddEntryForm({
     setError(null);
     setSubmitting(true);
     try {
+      const payload = {
+        type,
+        amount: numeric,
+        description: description.trim(),
+        category: category.trim() || null,
+        payment_mode: paymentMode,
+        entry_date: date,
+      };
+
       if (editing) {
-        const { data, error: err } = await supabase
-          .from("roznamcha")
-          .update({
-            type,
-            amount: numeric,
-            description: description.trim(),
-            category: category.trim() || null,
-            payment_mode: paymentMode,
-            entry_date: date,
-          })
-          .eq("id", editing.id)
-          .eq("owner_id", ownerId)
-          .select("*")
-          .single();
-        if (err) throw err;
-        toast.success("Update ho gaya.");
-        onSaved(data as RoznamchaEntry);
-      } else {
-        const { data, error: err } = await supabase
-          .from("roznamcha")
-          .insert({
-            owner_id: ownerId,
-            type,
-            amount: numeric,
-            description: description.trim(),
-            category: category.trim() || null,
-            payment_mode: paymentMode,
-            entry_date: date,
-          })
-          .select("*")
-          .single();
-        if (err) throw err;
-        toast.success(
-          type === "income" ? "Amdani add ho gayi." : "Kharcha add ho gaya."
+        const result = await offlineUpdate(
+          "roznamcha",
+          "roznamcha",
+          editing.id,
+          payload
         );
-        onSaved(data as RoznamchaEntry);
+        const saved = await readLocalRow<RoznamchaEntry>("roznamcha", result.id);
+        if (!saved) throw new Error("Save nahi ho saka.");
+        toast.success(
+          result.offline ? "Offline — update local save ho gaya." : "Update ho gaya."
+        );
+        onSaved(saved);
+      } else {
+        const result = await offlineInsert("roznamcha", "roznamcha", {
+          owner_id: ownerId,
+          ...payload,
+        });
+        const saved = await readLocalRow<RoznamchaEntry>("roznamcha", result.id);
+        if (!saved) throw new Error("Save nahi ho saka.");
+        toast.success(
+          result.offline
+            ? "Offline — entry local save ho gayi, internet pe sync ho jaegi."
+            : type === "income"
+              ? "Amdani add ho gayi."
+              : "Kharcha add ho gaya."
+        );
+        onSaved(saved);
       }
+      await refreshPending();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Save nahi ho saka.";
       setError(message);
-      toast.error("Save nahi ho saka. Internet check karein.");
+      toast.error(message);
     } finally {
       setSubmitting(false);
     }

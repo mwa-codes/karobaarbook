@@ -5,7 +5,11 @@ import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
-import { supabase } from "@/lib/supabase";
+import { useOffline } from "@/context/OfflineContext";
+import {
+  offlineInsert,
+  offlineUpdate,
+} from "@/lib/offline-write";
 import { classNames, formatPKR, formatRs } from "@/lib/format";
 import {
   computeWageBreakdown,
@@ -48,6 +52,7 @@ export function CalculateWagesSheet({
   factoryName?: string;
 }) {
   const toast = useToast();
+  const { refreshPending } = useOffline();
 
   const earliest = useMemo(() => {
     const dates = [
@@ -181,76 +186,62 @@ export function CalculateWagesSheet({
         .filter(Boolean)
         .join(" ");
 
-      const { data: payment, error: payErr } = await supabase
-        .from("wage_payments")
-        .insert({
-          owner_id: ownerId,
-          employee_id: employee.id,
-          period_start: dateFrom,
-          period_end: dateTo,
-          ...totals,
-          gross_amount: gross,
-          kharcha_deduction: kharchaTotal,
-          advance_deduction: advanceTotal,
-          deductions: otherDed,
-          net_amount: net,
-          paid: true,
-          paid_at: new Date().toISOString(),
-          notes: noteText || null,
-        })
-        .select()
-        .single();
+      const paymentResult = await offlineInsert("wage_payments", "wage_payments", {
+        owner_id: ownerId,
+        employee_id: employee.id,
+        period_start: dateFrom,
+        period_end: dateTo,
+        ...totals,
+        gross_amount: gross,
+        kharcha_deduction: kharchaTotal,
+        advance_deduction: advanceTotal,
+        deductions: otherDed,
+        net_amount: net,
+        paid: true,
+        paid_at: new Date().toISOString(),
+        notes: noteText || null,
+      });
+      const paymentId = paymentResult.id;
 
-      if (payErr) throw payErr;
-
-      if (rangeEntries.length > 0) {
-        const { error: linkErr } = await supabase
-          .from("karigar_work_entries")
-          .update({ wage_payment_id: payment.id })
-          .eq("owner_id", ownerId)
-          .eq("employee_id", employee.id)
-          .is("wage_payment_id", null)
-          .gte("entry_date", dateFrom)
-          .lte("entry_date", dateTo);
-        if (linkErr) throw linkErr;
+      for (const entry of rangeEntries) {
+        await offlineUpdate("karigar_work_entries", "karigar_work_entries", entry.id, {
+          wage_payment_id: paymentId,
+        });
       }
 
-      if (rangeKharcha.length > 0) {
-        const { error: khErr } = await supabase
-          .from("karigar_kharcha")
-          .update({ wage_payment_id: payment.id })
-          .eq("owner_id", ownerId)
-          .eq("employee_id", employee.id)
-          .is("wage_payment_id", null)
-          .gte("entry_date", dateFrom)
-          .lte("entry_date", dateTo);
-        if (khErr) throw khErr;
+      for (const kh of rangeKharcha) {
+        await offlineUpdate("karigar_kharcha", "karigar_kharcha", kh.id, {
+          wage_payment_id: paymentId,
+        });
       }
 
       for (const cut of resolvedAdvanceCuts) {
         const adv = openAdvances.find((a) => a.id === cut.advanceId);
         if (!adv) continue;
 
-        const { error: appErr } = await supabase
-          .from("karigar_advance_applications")
-          .insert({
+        await offlineInsert(
+          "karigar_advance_applications",
+          "karigar_advance_applications",
+          {
             owner_id: ownerId,
             advance_id: cut.advanceId,
-            wage_payment_id: payment.id,
+            wage_payment_id: paymentId,
             amount: cut.amount,
-          });
-        if (appErr) throw appErr;
+          }
+        );
 
         const newSettled = Number(adv.amount_settled) + cut.amount;
-        const { error: updErr } = await supabase
-          .from("karigar_advances")
-          .update({ amount_settled: newSettled })
-          .eq("id", cut.advanceId)
-          .eq("owner_id", ownerId);
-        if (updErr) throw updErr;
+        await offlineUpdate("karigar_advances", "karigar_advances", cut.advanceId, {
+          amount_settled: newSettled,
+        });
       }
 
-      toast.success("Payment mark ho gayi.");
+      toast.success(
+        paymentResult.offline
+          ? "Offline — payment local save ho gayi, internet pe sync ho jaegi."
+          : "Payment mark ho gayi."
+      );
+      await refreshPending();
       const slipBreakdown = [
         ...breakdown,
         ...(kharchaTotal > 0

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { localDB, withSync, type LocalKarigarKharcha } from "@/lib/local-db";
 import { supabase } from "@/lib/supabase";
 import type { KarigarKharcha } from "@/types/database";
 
@@ -11,50 +12,82 @@ interface Options {
   dateTo?: string;
 }
 
+export type KarigarKharchaWithSync = KarigarKharcha & { _synced?: 0 | 1 };
+
+function stripSync(row: LocalKarigarKharcha): KarigarKharchaWithSync {
+  const { _deleted, _local_id, ...rest } = row;
+  return rest;
+}
+
 export function useKarigarKharcha(
   userId: string | null | undefined,
   options: Options = {}
 ) {
   const { employeeId, unpaidOnly = false, dateFrom, dateTo } = options;
-  const [items, setItems] = useState<KarigarKharcha[]>([]);
+  const [items, setItems] = useState<KarigarKharchaWithSync[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const alive = useRef(true);
 
-  const fetch = useCallback(async () => {
+  const loadLocal = useCallback(async () => {
     if (!userId) {
       setLoading(false);
       return;
     }
-    setLoading(true);
-    setError(null);
-
-    let q = supabase
-      .from("karigar_kharcha")
-      .select("*")
-      .eq("owner_id", userId)
-      .order("entry_date", { ascending: false })
-      .order("created_at", { ascending: false });
-
-    if (employeeId) q = q.eq("employee_id", employeeId);
-    if (unpaidOnly) q = q.is("wage_payment_id", null);
-    if (dateFrom) q = q.gte("entry_date", dateFrom);
-    if (dateTo) q = q.lte("entry_date", dateTo);
-
-    const { data, error: err } = await q;
+    const all = await localDB.karigar_kharcha
+      .where("owner_id")
+      .equals(userId)
+      .and((k) => {
+        if (k._deleted === 1) return false;
+        if (employeeId && k.employee_id !== employeeId) return false;
+        if (unpaidOnly && k.wage_payment_id) return false;
+        if (dateFrom && k.entry_date < dateFrom) return false;
+        if (dateTo && k.entry_date > dateTo) return false;
+        return true;
+      })
+      .toArray();
+    all.sort((a, b) => {
+      const d = b.entry_date.localeCompare(a.entry_date);
+      return d !== 0 ? d : b.created_at.localeCompare(a.created_at);
+    });
     if (!alive.current) return;
-    if (err) setError(err.message);
-    else setItems((data ?? []) as KarigarKharcha[]);
+    setItems(all.map(stripSync));
     setLoading(false);
   }, [userId, employeeId, unpaidOnly, dateFrom, dateTo]);
 
+  const syncFromServer = useCallback(async () => {
+    if (!userId || !navigator.onLine) return;
+    setError(null);
+    let q = supabase
+      .from("karigar_kharcha")
+      .select("*")
+      .eq("owner_id", userId);
+    if (employeeId) q = q.eq("employee_id", employeeId);
+    const { data, error: err } = await q;
+    if (!alive.current) return;
+    if (err) {
+      setError(err.message);
+      return;
+    }
+    if (data) {
+      await localDB.karigar_kharcha.bulkPut(data.map((r) => withSync(r)));
+      await loadLocal();
+    }
+  }, [userId, employeeId, loadLocal]);
+
+  const refresh = useCallback(async () => {
+    await loadLocal();
+    await syncFromServer();
+  }, [loadLocal, syncFromServer]);
+
   useEffect(() => {
     alive.current = true;
-    fetch();
+    setLoading(true);
+    loadLocal().then(syncFromServer);
     return () => {
       alive.current = false;
     };
-  }, [fetch]);
+  }, [loadLocal, syncFromServer]);
 
-  return { items, loading, error, refresh: fetch };
+  return { items, loading, error, refresh };
 }

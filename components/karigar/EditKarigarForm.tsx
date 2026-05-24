@@ -4,7 +4,11 @@ import { FormEvent, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
-import { supabase } from "@/lib/supabase";
+import { useOffline } from "@/context/OfflineContext";
+import {
+  offlineUpdate,
+  readLocalRow,
+} from "@/lib/offline-write";
 import { classNames } from "@/lib/format";
 import type { Employee, WorkType } from "@/types/database";
 
@@ -20,6 +24,7 @@ export function EditKarigarForm({
   onClose: () => void;
 }) {
   const toast = useToast();
+  const { refreshPending } = useOffline();
   const [name, setName] = useState(employee.name);
   const [role, setRole] = useState(employee.role ?? "");
   const [phone, setPhone] = useState(employee.phone ?? "");
@@ -35,22 +40,20 @@ export function EditKarigarForm({
     }
     setSubmitting(true);
     try {
-      const { data, error } = await supabase
-        .from("employees")
-        .update({
-          name: name.trim(),
-          role: role.trim() || null,
-          phone: phone.trim() || null,
-          rate_type: rateType,
-          rate_amount: Number(rateAmount) || 0,
-        })
-        .eq("id", employee.id)
-        .eq("owner_id", ownerId)
-        .select("*")
-        .single();
-      if (error) throw error;
-      toast.success("Update ho gaya.");
-      onSaved(data as Employee);
+      const result = await offlineUpdate("employees", "employees", employee.id, {
+        name: name.trim(),
+        role: role.trim() || null,
+        phone: phone.trim() || null,
+        rate_type: rateType,
+        rate_amount: Number(rateAmount) || 0,
+      });
+      const saved = await readLocalRow<Employee>("employees", result.id);
+      if (!saved) throw new Error("Update nahi ho saka.");
+      toast.success(
+        result.offline ? "Offline — update local save ho gaya." : "Update ho gaya."
+      );
+      await refreshPending();
+      onSaved(saved);
       onClose();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Update nahi ho saka.");

@@ -5,7 +5,8 @@ import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
-import { supabase } from "@/lib/supabase";
+import { useOffline } from "@/context/OfflineContext";
+import { offlineInsert } from "@/lib/offline-write";
 import { todayIso } from "@/lib/format";
 
 export function AddAdvanceForm({
@@ -22,6 +23,7 @@ export function AddAdvanceForm({
   onSaved: () => void;
 }) {
   const toast = useToast();
+  const { refreshPending } = useOffline();
   const [entryDate, setEntryDate] = useState(todayIso());
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
@@ -36,7 +38,7 @@ export function AddAdvanceForm({
     }
     setSubmitting(true);
     try {
-      const { error } = await supabase.from("karigar_advances").insert({
+      const result = await offlineInsert("karigar_advances", "karigar_advances", {
         owner_id: ownerId,
         employee_id: employeeId,
         entry_date: entryDate,
@@ -44,8 +46,12 @@ export function AddAdvanceForm({
         amount_settled: 0,
         description: description.trim() || null,
       });
-      if (error) throw error;
-      toast.success("Advance log ho gayi.");
+      toast.success(
+        result.offline
+          ? "Offline — advance local save ho gayi."
+          : "Advance log ho gayi."
+      );
+      await refreshPending();
       setAmount("");
       setDescription("");
       setEntryDate(todayIso());

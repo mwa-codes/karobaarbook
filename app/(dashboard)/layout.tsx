@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { BottomNav } from "@/components/layout/BottomNav";
+import { OfflineBanner } from "@/components/layout/OfflineBanner";
 import { TrialBanner } from "@/components/layout/TrialBanner";
 import { DashboardProviders } from "@/components/providers/DashboardProviders";
 import { createServerSupabase } from "@/lib/supabase-server";
@@ -71,6 +72,7 @@ export default async function DashboardLayout({
     <DashboardProviders user={user}>
       <div className="min-h-[100dvh] pb-nav">
         <TrialBanner state={subscriptionState} />
+        <OfflineBanner />
         {children}
         <BottomNav />
       </div>
