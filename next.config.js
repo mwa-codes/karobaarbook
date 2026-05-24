@@ -4,27 +4,51 @@ const withPWA = require("next-pwa")({
   register: true,
   skipWaiting: true,
   disable: process.env.NODE_ENV === "development",
+  // Pre-cache each tab route in the "others" cache when visited while online
+  cacheOnFrontEndNav: true,
   fallbacks: {
     document: "/offline",
   },
   runtimeCaching: [
-    // App shell — all pages cached with NetworkFirst (network preferred, cache fallback)
+    // Same-origin pages + RSC payloads (must use cacheName "others" for cacheOnFrontEndNav)
     {
-      urlPattern: /^https:\/\/karobaarbook\.vercel\.app\/.*/i,
+      urlPattern: ({ url, request }) => {
+        if (request.method !== "GET") return false;
+        if (typeof self === "undefined") return false;
+        if (url.origin !== self.location.origin) return false;
+        if (url.pathname.startsWith("/api/")) return false;
+        return true;
+      },
       handler: "NetworkFirst",
       options: {
-        cacheName: "app-shell-cache",
-        networkTimeoutSeconds: 5,
+        cacheName: "others",
+        networkTimeoutSeconds: 15,
         expiration: {
           maxEntries: 200,
-          maxAgeSeconds: 24 * 60 * 60, // 24 hours
+          maxAgeSeconds: 24 * 60 * 60,
         },
         cacheableResponse: {
           statuses: [0, 200],
         },
       },
     },
-    // Next.js static assets — CacheFirst (never changes, safe to cache forever)
+    // Supabase REST / RPC (GET only)
+    {
+      urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
+      handler: "NetworkFirst",
+      method: "GET",
+      options: {
+        cacheName: "supabase-api",
+        networkTimeoutSeconds: 10,
+        expiration: {
+          maxEntries: 100,
+          maxAgeSeconds: 5 * 60,
+        },
+        cacheableResponse: {
+          statuses: [0, 200],
+        },
+      },
+    },
     {
       urlPattern: /\/_next\/static\/.*/i,
       handler: "CacheFirst",
@@ -32,14 +56,13 @@ const withPWA = require("next-pwa")({
         cacheName: "nextjs-static-assets",
         expiration: {
           maxEntries: 300,
-          maxAgeSeconds: 7 * 24 * 60 * 60, // 7 days
+          maxAgeSeconds: 7 * 24 * 60 * 60,
         },
         cacheableResponse: {
           statuses: [0, 200],
         },
       },
     },
-    // Next.js image optimization
     {
       urlPattern: /\/_next\/image\?.*/i,
       handler: "StaleWhileRevalidate",
@@ -54,7 +77,6 @@ const withPWA = require("next-pwa")({
         },
       },
     },
-    // Google Fonts and other static CDN assets
     {
       urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,
       handler: "CacheFirst",

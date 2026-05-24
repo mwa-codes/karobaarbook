@@ -33,9 +33,7 @@ export function OfflineProvider({
   children: ReactNode;
   ownerId: string | null;
 }) {
-  const [isOnline, setIsOnline] = useState(
-    typeof navigator !== "undefined" ? navigator.onLine : true
-  );
+  const [isOnline, setIsOnline] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
 
@@ -66,18 +64,41 @@ export function OfflineProvider({
   useEffect(() => {
     if (!ownerId) return;
 
+    let cancelled = false;
+
+    const probeNetwork = async () => {
+      if (!navigator.onLine) {
+        if (!cancelled) setIsOnline(false);
+        return false;
+      }
+      try {
+        const res = await fetch(`${window.location.origin}/manifest.json`, {
+          method: "HEAD",
+          cache: "no-store",
+        });
+        const online = res.ok;
+        if (!cancelled) setIsOnline(online);
+        return online;
+      } catch {
+        if (!cancelled) setIsOnline(false);
+        return false;
+      }
+    };
+
     const onOnline = async () => {
-      setIsOnline(true);
-      await triggerSync(ownerId);
+      const ok = await probeNetwork();
+      if (ok) await triggerSync(ownerId);
     };
     const onOffline = () => setIsOnline(false);
 
+    probeNetwork();
     window.addEventListener("online", onOnline);
     window.addEventListener("offline", onOffline);
 
     pullFromSupabase(ownerId).then(refreshPendingCount);
 
     return () => {
+      cancelled = true;
       window.removeEventListener("online", onOnline);
       window.removeEventListener("offline", onOffline);
     };
