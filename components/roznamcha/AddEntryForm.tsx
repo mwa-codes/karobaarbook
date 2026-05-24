@@ -30,11 +30,13 @@ export interface AddEntryFormProps {
 const INCOME_CATEGORIES = [
   "Maal sale kia",
   "Party Payment",
+  "Advance wapas",
   "Other",
 ] as const;
 
 const EXPENSE_CATEGORIES = [
   "Mazdoori",
+  "Advance diya",
   "Kharcha Maal",
   "Tools & Equipment",
   "Packaging",

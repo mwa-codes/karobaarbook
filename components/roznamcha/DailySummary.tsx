@@ -1,21 +1,26 @@
 "use client";
 
+import { TrashIcon } from "@/components/ui/Icons";
 import { classNames, formatPKR } from "@/lib/format";
 
 export interface DailySummaryProps {
   openingBalance: number;
+  openingIsExplicit?: boolean;
   totalIncome: number;
   totalExpense: number;
   closingBalance: number;
   onEditOpening: () => void;
+  onDeleteOpening?: () => void;
 }
 
 export function DailySummary({
   openingBalance,
+  openingIsExplicit = false,
   totalIncome,
   totalExpense,
   closingBalance,
   onEditOpening,
+  onDeleteOpening,
 }: DailySummaryProps) {
   return (
     <div className="flex flex-col gap-3">
@@ -29,13 +34,25 @@ export function DailySummary({
             Rs. {formatPKR(openingBalance)}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={onEditOpening}
-          className="rounded-full bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-100"
-        >
-          Edit
-        </button>
+        <div className="flex shrink-0 items-center gap-1.5">
+          {openingIsExplicit && onDeleteOpening ? (
+            <button
+              type="button"
+              onClick={onDeleteOpening}
+              aria-label="Delete opening balance"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-dena-50 text-dena hover:bg-dena-100"
+            >
+              <TrashIcon className="h-4 w-4" />
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={onEditOpening}
+            className="rounded-full bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-100"
+          >
+            Edit
+          </button>
+        </div>
       </div>
 
       {/* 3-up totals */}

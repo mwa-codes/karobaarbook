@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/Button";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { ConfirmSheet } from "@/components/ui/ConfirmSheet";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { EditIcon, PhoneIcon } from "@/components/ui/Icons";
+import { EditIcon, PhoneIcon, TrashIcon } from "@/components/ui/Icons";
+import { useToast } from "@/components/ui/Toast";
 import { WorkEntryCard } from "@/components/karigar/WorkEntryCard";
 import { KharchaRow } from "@/components/karigar/KharchaRow";
 import { AdvanceRow } from "@/components/karigar/AdvanceRow";
@@ -26,6 +27,7 @@ import { useWorkEntries } from "@/hooks/useWorkEntries";
 import { useKarigarKharcha } from "@/hooks/useKarigarKharcha";
 import { useKarigarAdvances, advanceBalance } from "@/hooks/useKarigarAdvances";
 import { useOffline } from "@/context/OfflineContext";
+import { deleteKarigar } from "@/lib/delete-karigar";
 import { offlineDelete } from "@/lib/offline-write";
 import { localDB, withSync } from "@/lib/local-db";
 import { supabase } from "@/lib/supabase";
@@ -55,6 +57,7 @@ export default function KarigarDetailPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const { refreshPending } = useOffline();
+  const toast = useToast();
   const userId = user?.id ?? null;
 
   const [employee, setEmployee] = useState<Employee | null>(null);
@@ -108,6 +111,7 @@ export default function KarigarDetailPage() {
   const [deleteTarget, setDeleteTarget] = useState<KarigarWorkEntry | null>(null);
   const [deleteKharcha, setDeleteKharcha] = useState<KarigarKharcha | null>(null);
   const [deleteAdvance, setDeleteAdvance] = useState<KarigarAdvance | null>(null);
+  const [deleteKarigarOpen, setDeleteKarigarOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   const loadEmployee = useCallback(async () => {
@@ -215,11 +219,16 @@ export default function KarigarDetailPage() {
         deleteTarget.id
       );
       if (!result.ok) throw new Error("Delete failed");
+      toast.success(
+        result.offline
+          ? "Offline — delete local save ho gaya."
+          : "Entry delete ho gayi."
+      );
       await refreshPending();
       refreshAllData();
       setDeleteTarget(null);
-    } catch (err) {
-      console.error(err);
+    } catch {
+      toast.error("Delete nahi ho saka.");
     } finally {
       setDeleting(false);
     }
@@ -235,9 +244,45 @@ export default function KarigarDetailPage() {
         deleteKharcha.id
       );
       if (!result.ok) throw new Error("Delete failed");
+      toast.success(
+        result.offline
+          ? "Offline — delete local save ho gaya."
+          : "Kharcha delete ho gaya."
+      );
       await refreshPending();
       refreshAllData();
       setDeleteKharcha(null);
+    } catch {
+      toast.error("Delete nahi ho saka.");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  const hasKarigarRecords =
+    allEntries.length > 0 ||
+    allKharcha.length > 0 ||
+    allAdvances.length > 0 ||
+    payments.length > 0;
+
+  async function handleDeleteKarigar() {
+    if (!employee || !userId) return;
+    setDeleting(true);
+    try {
+      const result = await deleteKarigar(userId, employee.id);
+      if (!result.ok) {
+        toast.error("Karigar delete nahi ho saka.");
+        return;
+      }
+      toast.success(
+        result.offline
+          ? "Offline — delete local save ho gaya."
+          : "Karigar delete ho gaya."
+      );
+      await refreshPending();
+      setDeleteKarigarOpen(false);
+      router.replace("/karigar");
+      router.refresh();
     } finally {
       setDeleting(false);
     }
@@ -253,9 +298,16 @@ export default function KarigarDetailPage() {
         deleteAdvance.id
       );
       if (!result.ok) throw new Error("Delete failed");
+      toast.success(
+        result.offline
+          ? "Offline — delete local save ho gaya."
+          : "Advance delete ho gaya."
+      );
       await refreshPending();
       refreshAllData();
       setDeleteAdvance(null);
+    } catch {
+      toast.error("Delete nahi ho saka.");
     } finally {
       setDeleting(false);
     }
@@ -300,6 +352,14 @@ export default function KarigarDetailPage() {
                 aria-label="Edit karigar"
               >
                 <EditIcon />
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeleteKarigarOpen(true)}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/25"
+                aria-label="Delete karigar"
+              >
+                <TrashIcon className="h-5 w-5" />
               </button>
             </>
           ) : null
@@ -605,6 +665,20 @@ export default function KarigarDetailPage() {
         confirmLabel="Delete"
         loading={deleting}
         onConfirm={handleDeleteAdvance}
+      />
+      <ConfirmSheet
+        open={deleteKarigarOpen}
+        onClose={() => setDeleteKarigarOpen(false)}
+        title="Karigar delete karein?"
+        message={
+          hasKarigarRecords
+            ? "Is karigar ka saara kaam, kharcha, advance aur payment history bhi delete ho jayegi. Kya aap sure hain?"
+            : "Yeh karigar list se hata diya jayega. Kya aap sure hain?"
+        }
+        confirmLabel="Haan, Delete Karo"
+        cancelLabel="Nahi"
+        loading={deleting}
+        onConfirm={handleDeleteKarigar}
       />
     </div>
   );

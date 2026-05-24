@@ -404,7 +404,7 @@ export function CalculateWagesSheet({
                           onClick={() => fillAdvanceBalance(adv)}
                           className="mt-6 shrink-0 text-xs font-semibold text-brand"
                         >
-                          Poori
+                          Poora Advance Katoti
                         </button>
                       </div>
                     </div>

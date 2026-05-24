@@ -5,11 +5,8 @@ import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { useOffline } from "@/context/OfflineContext";
 import { localDB } from "@/lib/local-db";
-import {
-  offlineDelete,
-  offlineInsert,
-  offlineUpdate,
-} from "@/lib/offline-write";
+import { deleteExplicitOpeningBalance } from "@/lib/roznamcha-opening";
+import { offlineInsert, offlineUpdate } from "@/lib/offline-write";
 import { classNames, formatPKR } from "@/lib/format";
 
 export interface OpeningBalanceEditorProps {
@@ -87,22 +84,10 @@ export function OpeningBalanceEditor({
   async function handleReset() {
     setSubmitting(true);
     try {
-      const existing = await localDB.daily_opening_balance
-        .where("owner_id")
-        .equals(ownerId)
-        .and((r) => r._deleted === 0 && r.entry_date === date)
-        .first();
+      const result = await deleteExplicitOpeningBalance(ownerId, date);
+      if (!result.ok) throw new Error("Reset nahi ho saka.");
 
-      if (existing) {
-        const result = await offlineDelete(
-          "daily_opening_balance",
-          "daily_opening_balance",
-          existing.id
-        );
-        if (!result.ok) throw new Error("Reset nahi ho saka.");
-      }
-
-      toast.success("Opening balance reset ho gaya (auto-calculate).");
+      toast.success("Opening balance delete ho gaya (ab auto-calculate).");
       await refreshPending();
       onSaved();
     } catch (err) {
@@ -179,9 +164,9 @@ export function OpeningBalanceEditor({
           type="button"
           onClick={handleReset}
           disabled={submitting}
-          className="text-center text-xs font-semibold text-dena hover:underline"
+          className="text-center text-sm font-semibold text-dena hover:underline"
         >
-          Reset (auto-calculate karein)
+          Delete karein (auto-calculate wapas)
         </button>
       ) : null}
     </form>

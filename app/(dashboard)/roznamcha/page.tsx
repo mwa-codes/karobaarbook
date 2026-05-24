@@ -12,7 +12,9 @@ import { AddEntryForm } from "@/components/roznamcha/AddEntryForm";
 import { DailySummary } from "@/components/roznamcha/DailySummary";
 import { DateNavigator } from "@/components/roznamcha/DateNavigator";
 import { EntryCard } from "@/components/roznamcha/EntryCard";
+import { OpeningBalanceCard } from "@/components/roznamcha/OpeningBalanceCard";
 import { OpeningBalanceEditor } from "@/components/roznamcha/OpeningBalanceEditor";
+import { deleteExplicitOpeningBalance } from "@/lib/roznamcha-opening";
 import { useAuth } from "@/hooks/useAuth";
 import { useRoznamcha } from "@/hooks/useRoznamcha";
 import { useOffline } from "@/context/OfflineContext";
@@ -48,6 +50,7 @@ export default function RoznamchaPage() {
 
   const [openingSheetOpen, setOpeningSheetOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<RoznamchaEntry | null>(null);
+  const [deleteOpeningOpen, setDeleteOpeningOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   function openAdd(type: RoznamchaType) {
@@ -79,6 +82,25 @@ export default function RoznamchaPage() {
     refresh();
   }
 
+  async function handleDeleteOpening() {
+    if (!userId) return;
+    setDeleting(true);
+    const result = await deleteExplicitOpeningBalance(userId, selectedDate);
+    setDeleting(false);
+    if (!result.ok) {
+      toast.error("Opening balance delete nahi ho saka.");
+      return;
+    }
+    toast.success(
+      result.offline
+        ? "Offline — delete local save ho gaya."
+        : "Kal ka bakaya delete ho gaya — ab auto calculate hoga."
+    );
+    await refreshPending();
+    setDeleteOpeningOpen(false);
+    refresh();
+  }
+
   const showLoading = authLoading || loading;
 
   return (
@@ -104,10 +126,16 @@ export default function RoznamchaPage() {
           ) : (
             <DailySummary
               openingBalance={openingBalance}
+              openingIsExplicit={openingIsExplicit}
               totalIncome={totalIncome}
               totalExpense={totalExpense}
               closingBalance={closingBalance}
               onEditOpening={() => setOpeningSheetOpen(true)}
+              onDeleteOpening={
+                openingIsExplicit
+                  ? () => setDeleteOpeningOpen(true)
+                  : undefined
+              }
             />
           )}
         </div>
@@ -161,7 +189,7 @@ export default function RoznamchaPage() {
                   <Skeleton className="h-5 w-20" />
                 </Card>
               ))
-            ) : entries.length === 0 ? (
+            ) : entries.length === 0 && !openingIsExplicit ? (
               <Card className="text-center">
                 <p className="text-sm text-ink-500">
                   Is din ke liye koi entry nahi hai. Upar se Amdani ya Kharcha
@@ -169,14 +197,23 @@ export default function RoznamchaPage() {
                 </p>
               </Card>
             ) : (
-              entries.map((entry) => (
-                <EntryCard
-                  key={entry.id}
-                  entry={entry}
-                  onEdit={openEdit}
-                  onDelete={(e) => setDeleteTarget(e)}
-                />
-              ))
+              <>
+                {openingIsExplicit ? (
+                  <OpeningBalanceCard
+                    amount={openingBalance}
+                    onEdit={() => setOpeningSheetOpen(true)}
+                    onDelete={() => setDeleteOpeningOpen(true)}
+                  />
+                ) : null}
+                {entries.map((entry) => (
+                  <EntryCard
+                    key={entry.id}
+                    entry={entry}
+                    onEdit={openEdit}
+                    onDelete={(e) => setDeleteTarget(e)}
+                  />
+                ))}
+              </>
             )}
           </div>
         </section>
@@ -231,13 +268,25 @@ export default function RoznamchaPage() {
       <ConfirmSheet
         open={!!deleteTarget}
         title="Entry delete karein?"
-        message="Kya aap is entry ko delete karna chahte hain?"
+        message="Kya aap is amdani/kharcha entry ko delete karna chahte hain?"
         confirmLabel="Haan, Delete Karo"
         cancelLabel="Nahi"
         variant="danger"
         loading={deleting}
         onConfirm={handleDelete}
-        onClose={() => setDeleteTarget(null)}
+        onClose={() => !deleting && setDeleteTarget(null)}
+      />
+
+      <ConfirmSheet
+        open={deleteOpeningOpen}
+        title="Kal ka bakaya delete karein?"
+        message="Manual opening balance hata diya jayega. Uske baad pichle din ke closing se auto calculate hoga."
+        confirmLabel="Haan, Delete Karo"
+        cancelLabel="Nahi"
+        variant="danger"
+        loading={deleting}
+        onConfirm={handleDeleteOpening}
+        onClose={() => !deleting && setDeleteOpeningOpen(false)}
       />
     </div>
   );
