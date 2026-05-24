@@ -24,10 +24,9 @@ const withPWA = require("next-pwa")({
           request.headers.get("Next-Router-State-Tree") != null
         );
       },
-      handler: "NetworkFirst",
+      handler: "StaleWhileRevalidate",
       options: {
         cacheName: "next-rsc",
-        networkTimeoutSeconds: 2,
         expiration: {
           maxEntries: 100,
           maxAgeSeconds: 24 * 60 * 60,
@@ -43,6 +42,7 @@ const withPWA = require("next-pwa")({
         if (request.method !== "GET") return false;
         if (typeof self === "undefined") return false;
         if (url.origin !== self.location.origin) return false;
+        if (request.mode === "navigate") return false;
         if (url.pathname.startsWith("/api/")) return false;
         if (
           request.headers.get("RSC") === "1" ||
@@ -52,10 +52,9 @@ const withPWA = require("next-pwa")({
         }
         return true;
       },
-      handler: "NetworkFirst",
+      handler: "StaleWhileRevalidate",
       options: {
         cacheName: "others",
-        networkTimeoutSeconds: 2,
         expiration: {
           maxEntries: 200,
           maxAgeSeconds: 24 * 60 * 60,
