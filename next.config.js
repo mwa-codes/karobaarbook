@@ -4,25 +4,58 @@ const withPWA = require("next-pwa")({
   register: true,
   skipWaiting: true,
   disable: process.env.NODE_ENV === "development",
-  // Pre-cache each tab route in the "others" cache when visited while online
   cacheOnFrontEndNav: true,
+  dynamicStartUrl: true,
+  dynamicStartUrlRedirect: "/dashboard",
+  reloadOnOnline: false,
   fallbacks: {
     document: "/offline",
   },
   runtimeCaching: [
-    // Same-origin pages + RSC payloads (must use cacheName "others" for cacheOnFrontEndNav)
+    // Next.js App Router RSC / prefetch requests (client-side tab nav)
+    {
+      urlPattern: ({ url, request }) => {
+        if (request.method !== "GET") return false;
+        if (typeof self === "undefined") return false;
+        if (url.origin !== self.location.origin) return false;
+        return (
+          request.headers.get("RSC") === "1" ||
+          request.headers.get("Next-Router-Prefetch") === "1" ||
+          request.headers.get("Next-Router-State-Tree") != null
+        );
+      },
+      handler: "NetworkFirst",
+      options: {
+        cacheName: "next-rsc",
+        networkTimeoutSeconds: 2,
+        expiration: {
+          maxEntries: 100,
+          maxAgeSeconds: 24 * 60 * 60,
+        },
+        cacheableResponse: {
+          statuses: [0, 200],
+        },
+      },
+    },
+    // Same-origin HTML pages (must use cacheName "others" for cacheOnFrontEndNav)
     {
       urlPattern: ({ url, request }) => {
         if (request.method !== "GET") return false;
         if (typeof self === "undefined") return false;
         if (url.origin !== self.location.origin) return false;
         if (url.pathname.startsWith("/api/")) return false;
+        if (
+          request.headers.get("RSC") === "1" ||
+          request.headers.get("Next-Router-Prefetch") === "1"
+        ) {
+          return false;
+        }
         return true;
       },
       handler: "NetworkFirst",
       options: {
         cacheName: "others",
-        networkTimeoutSeconds: 3,
+        networkTimeoutSeconds: 2,
         expiration: {
           maxEntries: 200,
           maxAgeSeconds: 24 * 60 * 60,

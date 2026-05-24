@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ComponentType } from "react";
 import {
@@ -113,8 +112,10 @@ export function BottomNav() {
 
 function TabLink({ tab, active }: { tab: Tab; active: boolean }) {
   const Icon = tab.icon;
+  // Full page navigation so the service worker can serve cached HTML offline
+  // (Next.js <Link> uses RSC requests that often miss the SW cache on iOS/Android).
   return (
-    <Link
+    <a
       href={tab.href}
       className={classNames(
         "flex flex-col items-center justify-center gap-1 focus:outline-none",
@@ -126,7 +127,7 @@ function TabLink({ tab, active }: { tab: Tab; active: boolean }) {
       <span className="text-[11px] font-semibold leading-none">
         {tab.label}
       </span>
-    </Link>
+    </a>
   );
 }
 
