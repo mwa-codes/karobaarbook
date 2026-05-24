@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { localDB, withSync } from "@/lib/local-db";
 import { advanceBalance } from "@/hooks/useKarigarAdvances";
+import { shouldSurfaceSyncError } from "@/lib/sync-failure";
 import { supabase } from "@/lib/supabase";
 import type { KarigarPendingWage } from "@/types/database";
 
@@ -93,6 +94,18 @@ export function useKarigars(userId: string | null | undefined) {
       ]);
     if (empRes.error) {
       if (!alive.current) return;
+      if (!shouldSurfaceSyncError()) {
+        await loadLocal();
+        return;
+      }
+      const localCount = await localDB.employees
+        .where("owner_id")
+        .equals(userId)
+        .count();
+      if (localCount > 0) {
+        await loadLocal();
+        return;
+      }
       setError(empRes.error.message);
       return;
     }

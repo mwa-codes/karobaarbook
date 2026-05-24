@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { localDB, withSync, type LocalKarigarKharcha } from "@/lib/local-db";
+import { shouldSurfaceSyncError } from "@/lib/sync-failure";
 import { supabase } from "@/lib/supabase";
 import type { KarigarKharcha } from "@/types/database";
 
@@ -66,6 +67,10 @@ export function useKarigarKharcha(
     const { data, error: err } = await q;
     if (!alive.current) return;
     if (err) {
+      if (!shouldSurfaceSyncError()) {
+        await loadLocal();
+        return;
+      }
       setError(err.message);
       return;
     }

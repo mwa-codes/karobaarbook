@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { localDB, withSync, type LocalWorkEntry } from "@/lib/local-db";
+import { shouldSurfaceSyncError } from "@/lib/sync-failure";
 import { supabase } from "@/lib/supabase";
 import type { KarigarWorkEntry } from "@/types/database";
 
@@ -66,6 +67,10 @@ export function useWorkEntries(
     const { data, error: err } = await q;
     if (!alive.current) return;
     if (err) {
+      if (!shouldSurfaceSyncError()) {
+        await loadLocal();
+        return;
+      }
       setError(err.message);
       return;
     }

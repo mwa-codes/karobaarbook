@@ -71,18 +71,8 @@ export function OfflineProvider({
         if (!cancelled) setIsOnline(false);
         return false;
       }
-      try {
-        const res = await fetch(`${window.location.origin}/manifest.json`, {
-          method: "HEAD",
-          cache: "no-store",
-        });
-        const online = res.ok;
-        if (!cancelled) setIsOnline(online);
-        return online;
-      } catch {
-        if (!cancelled) setIsOnline(false);
-        return false;
-      }
+      if (!cancelled) setIsOnline(true);
+      return true;
     };
 
     const onOnline = async () => {

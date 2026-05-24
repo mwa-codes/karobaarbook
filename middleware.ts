@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import type { Database } from "@/types/database";
 
-const PROTECTED_PREFIXES = ["/dashboard", "/khata", "/karigar"];
+const PROTECTED_PREFIXES = ["/dashboard", "/khata", "/karigar", "/roznamcha"];
 const AUTH_PAGES = new Set(["/login", "/register"]);
 
 export async function middleware(req: NextRequest) {
@@ -74,6 +74,7 @@ export const config = {
     "/dashboard/:path*",
     "/khata/:path*",
     "/karigar/:path*",
+    "/roznamcha/:path*",
     "/login",
     "/register",
     "/subscribe",

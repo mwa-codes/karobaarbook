@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { localDB, withSync, type LocalKarigarAdvance } from "@/lib/local-db";
+import { shouldSurfaceSyncError } from "@/lib/sync-failure";
 import { supabase } from "@/lib/supabase";
 import type { KarigarAdvance } from "@/types/database";
 
@@ -67,6 +68,10 @@ export function useKarigarAdvances(
     const { data, error: err } = await q;
     if (!alive.current) return;
     if (err) {
+      if (!shouldSurfaceSyncError()) {
+        await loadLocal();
+        return;
+      }
       setError(err.message);
       return;
     }

@@ -1,6 +1,31 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { LAST_ROUTE_KEY } from "@/components/layout/RouteCacheTracker";
+
 export default function OfflinePage() {
+  const [redirecting, setRedirecting] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    const target =
+      typeof localStorage !== "undefined"
+        ? localStorage.getItem(LAST_ROUTE_KEY) ?? "/khata"
+        : "/khata";
+
+    const timer = window.setTimeout(() => {
+      if (cancelled) return;
+      setRedirecting(false);
+    }, 2500);
+
+    window.location.replace(target);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, []);
+
   return (
     <div
       style={{
@@ -25,7 +50,7 @@ export default function OfflinePage() {
           margin: "0 0 8px",
         }}
       >
-        Internet Nahi Hai
+        {redirecting ? "App load ho rahi hai…" : "Internet Nahi Hai"}
       </h1>
 
       <p
@@ -34,66 +59,31 @@ export default function OfflinePage() {
           color: "#64748b",
           margin: "0 0 32px",
           lineHeight: 1.5,
-          maxWidth: 280,
+          maxWidth: 300,
         }}
       >
-        Pehle app online kholen phir pages visit karen — phir offline bhi
-        kaam karega.
+        {redirecting
+          ? "Cached pages se app khol rahe hain."
+          : "Pehle app online kholen, Khata / Karigar / Roznamcha visit karen — phir offline bhi kaam karega."}
       </p>
 
-      <div
-        style={{
-          background: "white",
-          borderRadius: 12,
-          padding: "16px 20px",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
-          maxWidth: 300,
-          width: "100%",
-          textAlign: "left",
-        }}
-      >
-        <p
+      {!redirecting ? (
+        <button
+          onClick={() => window.location.reload()}
           style={{
-            fontSize: 13,
+            background: "#1a56db",
+            color: "white",
+            border: "none",
+            borderRadius: 10,
+            padding: "12px 24px",
+            fontSize: 15,
             fontWeight: 600,
-            color: "#0f172a",
-            margin: "0 0 8px",
+            cursor: "pointer",
           }}
         >
-          Offline karne se pehle ye karen:
-        </p>
-        <ol
-          style={{
-            fontSize: 13,
-            color: "#64748b",
-            margin: 0,
-            paddingLeft: 18,
-            lineHeight: 2,
-          }}
-        >
-          <li>Internet on karen</li>
-          <li>App kholen</li>
-          <li>Karigar, Khata, Roznamcha — sab pages visit karen</li>
-          <li>Ab offline karo — app kaam karegi</li>
-        </ol>
-      </div>
-
-      <button
-        onClick={() => window.location.reload()}
-        style={{
-          marginTop: 24,
-          background: "#1a56db",
-          color: "white",
-          border: "none",
-          borderRadius: 10,
-          padding: "12px 24px",
-          fontSize: 15,
-          fontWeight: 600,
-          cursor: "pointer",
-        }}
-      >
-        Dobara Try Karen
-      </button>
+          Dobara Try Karen
+        </button>
+      ) : null}
     </div>
   );
 }

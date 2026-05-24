@@ -22,7 +22,7 @@ const withPWA = require("next-pwa")({
       handler: "NetworkFirst",
       options: {
         cacheName: "others",
-        networkTimeoutSeconds: 15,
+        networkTimeoutSeconds: 3,
         expiration: {
           maxEntries: 200,
           maxAgeSeconds: 24 * 60 * 60,

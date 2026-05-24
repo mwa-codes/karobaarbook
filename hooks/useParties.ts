@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { debounce } from "@/lib/debounce";
 import { localDB, withSync } from "@/lib/local-db";
 import { reconcileTransactionsFromServer } from "@/lib/reconcile-transactions";
+import { shouldSurfaceSyncError } from "@/lib/sync-failure";
 import { supabase } from "@/lib/supabase";
 import type { Party, PartyBalance } from "@/types/database";
 
@@ -78,14 +79,22 @@ export function usePartyBalances(
       supabase.from("parties").select("*").eq("owner_id", userId),
       supabase.from("transactions").select("*").eq("owner_id", userId),
     ]);
-    if (partiesRes.error) {
+    if (partiesRes.error || txRes.error) {
       if (!aliveRef.current) return;
-      setError(partiesRes.error.message);
-      return;
-    }
-    if (txRes.error) {
-      if (!aliveRef.current) return;
-      setError(txRes.error.message);
+      const errMsg = partiesRes.error?.message ?? txRes.error?.message ?? "";
+      if (!shouldSurfaceSyncError()) {
+        await loadLocal();
+        return;
+      }
+      const localCount = await localDB.parties
+        .where("owner_id")
+        .equals(userId)
+        .count();
+      if (localCount > 0) {
+        await loadLocal();
+        return;
+      }
+      setError(errMsg);
       return;
     }
     if (partiesRes.data) {

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { debounce } from "@/lib/debounce";
 import { localDB, withSync, type LocalRoznamchaEntry } from "@/lib/local-db";
 import { computeLocalRoznamchaDay } from "@/lib/roznamcha-local";
+import { shouldSurfaceSyncError } from "@/lib/sync-failure";
 import { supabase } from "@/lib/supabase";
 import type { RoznamchaDayResult, RoznamchaEntry } from "@/types/database";
 
@@ -115,8 +116,9 @@ export function useRoznamcha(
       }
     } catch (err) {
       if (!aliveRef.current) return;
-      setError(err instanceof Error ? err.message : "Load failed");
       await loadLocal();
+      if (!shouldSurfaceSyncError()) return;
+      setError(err instanceof Error ? err.message : "Load failed");
     }
   }, [userId, selectedDate, loadLocal]);
 

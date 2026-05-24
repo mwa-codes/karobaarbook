@@ -2,7 +2,7 @@
   "name": "KarobaarBook",
   "short_name": "KarobaarBook",
   "description": "Apna Karobaar, Digital Register — factory business management app for Pakistan.",
-  "start_url": "/",
+  "start_url": "/dashboard",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#ffffff",

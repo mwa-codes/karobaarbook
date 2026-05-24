@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { debounce } from "@/lib/debounce";
 import { localDB, withSync, type LocalTransaction } from "@/lib/local-db";
 import { reconcileTransactionsFromServer } from "@/lib/reconcile-transactions";
+import { shouldSurfaceSyncError } from "@/lib/sync-failure";
 import { supabase } from "@/lib/supabase";
 import type { Transaction } from "@/types/database";
 
@@ -97,6 +98,18 @@ export function useTransactions(
     const { data, error: err } = await q;
     if (!aliveRef.current) return;
     if (err) {
+      if (!shouldSurfaceSyncError()) {
+        await loadLocal();
+        return;
+      }
+      const localCount = await localDB.transactions
+        .where("owner_id")
+        .equals(userId)
+        .count();
+      if (localCount > 0) {
+        await loadLocal();
+        return;
+      }
       setError(err.message);
       return;
     }
