@@ -8,6 +8,7 @@ import type {
   WagePayment,
 } from "@/types/database";
 import { formatPKR, openWhatsApp } from "@/lib/format";
+import { sumPartyBalances } from "@/lib/khata-totals";
 import {
   advanceRemaining,
   computeNetPayable,
@@ -62,17 +63,12 @@ export function buildKhataSummaryMessage(
   parties: PartyBalance[],
   factoryName?: string
 ): string {
-  const lenaParties = parties.filter((p) => Number(p.net_balance) > 0);
-  const denaParties = parties.filter((p) => Number(p.net_balance) < 0);
-
-  const totalLena = lenaParties.reduce(
-    (s, p) => s + Number(p.net_balance),
-    0
-  );
-  const totalDena = denaParties.reduce(
-    (s, p) => s + Math.abs(Number(p.net_balance)),
-    0
-  );
+  const {
+    lena: totalLena,
+    dena: totalDena,
+    lenaParties,
+    denaParties,
+  } = sumPartyBalances(parties);
 
   const header = factoryName
     ? `*${factoryName} — Khata Summary*\n`

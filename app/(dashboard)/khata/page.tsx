@@ -9,6 +9,7 @@ import { BottomSheet } from "@/components/ui/BottomSheet";
 import { PlusIcon, SearchIcon, XIcon } from "@/components/ui/Icons";
 import { PartyCard } from "@/components/khata/PartyCard";
 import { useAuth } from "@/hooks/useAuth";
+import { sumPartyBalances } from "@/lib/khata-totals";
 import { usePartyBalances, type PartyFilter } from "@/hooks/useParties";
 import { useToast } from "@/components/ui/Toast";
 import {
@@ -31,18 +32,9 @@ export default function KhataListPage() {
   const [filter, setFilter] = useState<PartyFilter>("all");
   const [bulkShareOpen, setBulkShareOpen] = useState(false);
 
-  const totals = useMemo(() => {
-    return parties.reduce(
-      (acc, p) => {
-        acc.lena += Number(p.total_lena ?? 0);
-        acc.dena += Number(p.total_dena ?? 0);
-        return acc;
-      },
-      { lena: 0, dena: 0 }
-    );
-  }, [parties]);
+  const totals = useMemo(() => sumPartyBalances(parties), [parties]);
 
-  const net = totals.lena - totals.dena;
+  const net = totals.net;
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -93,14 +85,14 @@ export default function KhataListPage() {
         <div className="grid grid-cols-2 gap-3">
           <KhataSummaryCard
             label="Total Lena"
-            sublabel="Customers se aana hai"
+            sublabel="Customers se lena baqi"
             amount={totals.lena}
             tone="lena"
             loading={showLoading}
           />
           <KhataSummaryCard
             label="Total Dena"
-            sublabel="Vendors ko dena hai"
+            sublabel="Vendors ko dena baqi"
             amount={totals.dena}
             tone="dena"
             loading={showLoading}

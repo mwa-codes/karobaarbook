@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/Icons";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
+import { sumPartyBalances } from "@/lib/khata-totals";
 import { usePartyBalances } from "@/hooks/useParties";
 import { useKarigars } from "@/hooks/useKarigars";
 import { useRoznamcha } from "@/hooks/useRoznamcha";
@@ -54,18 +55,9 @@ export default function DashboardPage() {
   const toast = useToast();
   const router = useRouter();
 
-  const totals = useMemo(() => {
-    return parties.reduce(
-      (acc, p) => {
-        acc.lena += Number(p.total_lena ?? 0);
-        acc.dena += Number(p.total_dena ?? 0);
-        return acc;
-      },
-      { lena: 0, dena: 0 }
-    );
-  }, [parties]);
+  const totals = useMemo(() => sumPartyBalances(parties), [parties]);
 
-  const net = totals.lena - totals.dena;
+  const net = totals.net;
 
   const partyMap = useMemo(
     () => Object.fromEntries(parties.map((p) => [p.party_id, p])),
@@ -175,8 +167,8 @@ export default function DashboardPage() {
                   </p>
                   {!khataLoadingCombined && !khataError ? (
                     <p className="mt-1 font-mono text-xs text-ink-500">
-                      {parties.length} parties · +{formatPKR(totals.lena)} lena · −
-                      {formatPKR(totals.dena)} dena
+                      {parties.length} parties · +{formatPKR(totals.lena)} lena
+                      baqi · −{formatPKR(totals.dena)} dena baqi
                     </p>
                   ) : null}
                   {khataError ? (
