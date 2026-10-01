@@ -244,6 +244,27 @@ export default function PartyDetailPage() {
   const isCustomer = party.type === "customer" || party.type === "both";
   const isVendor = party.type === "vendor" || party.type === "both";
 
+  // These two tiles show the gross sum of each ledger *direction*, so they are
+  // named by what actually happened rather than by direction: for a pure
+  // customer every "dena" entry is a payment you received, never money you owe.
+  // A "both" party mixes sales with payments-made (and purchases with
+  // payments-received), so it keeps the neutral ledger wording.
+  const totalLabels =
+    party.type === "customer"
+      ? {
+          lena: { label: "Total Billed", tone: "lena" as const },
+          dena: { label: "Total Received", tone: "neutral" as const },
+        }
+      : party.type === "vendor"
+        ? {
+            lena: { label: "Total Paid", tone: "neutral" as const },
+            dena: { label: "Total Purchased", tone: "dena" as const },
+          }
+        : {
+            lena: { label: "Total Lena", tone: "lena" as const },
+            dena: { label: "Total Dena", tone: "dena" as const },
+          };
+
   return (
     <div>
       <Header
@@ -365,18 +386,16 @@ export default function PartyDetailPage() {
           </div>
 
           <div className="mt-4 grid grid-cols-2 gap-3 border-t border-line pt-3 text-center">
-            <div>
-              <p className="text-[11px] uppercase text-ink-500">Total Lena</p>
-              <p className="font-mono text-sm font-semibold text-lena">
-                Rs. {formatPKR(balance?.total_lena ?? 0)}
-              </p>
-            </div>
-            <div>
-              <p className="text-[11px] uppercase text-ink-500">Total Dena</p>
-              <p className="font-mono text-sm font-semibold text-dena">
-                Rs. {formatPKR(balance?.total_dena ?? 0)}
-              </p>
-            </div>
+            <TotalTile
+              label={totalLabels.lena.label}
+              amount={balance?.total_lena ?? 0}
+              tone={totalLabels.lena.tone}
+            />
+            <TotalTile
+              label={totalLabels.dena.label}
+              amount={balance?.total_dena ?? 0}
+              tone={totalLabels.dena.tone}
+            />
           </div>
         </Card>
 
@@ -578,6 +597,34 @@ function ShareOption({
       </div>
       <span className="text-ink-400">›</span>
     </button>
+  );
+}
+
+function TotalTile({
+  label,
+  amount,
+  tone,
+}: {
+  label: string;
+  amount: number;
+  tone: "lena" | "dena" | "neutral";
+}) {
+  return (
+    <div>
+      <p className="text-[11px] uppercase text-ink-500">{label}</p>
+      <p
+        className={classNames(
+          "font-mono text-sm font-semibold",
+          tone === "lena"
+            ? "text-lena"
+            : tone === "dena"
+              ? "text-dena"
+              : "text-ink-900"
+        )}
+      >
+        Rs. {formatPKR(amount)}
+      </p>
+    </div>
   );
 }
 
